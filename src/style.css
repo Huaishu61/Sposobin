@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Bravura';
+  src: url('/fonts/Bravura.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'LCBSposobin';
+  src: url('/fonts/LCBSposobinFont-1.003.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --font: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --bg: #fff;
+  --fg: #000;
+  --muted: #666;
+  --border: #000;
+  --hover: #f0f0f0;
+  --radius: 4px;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--fg);
+  background: var(--bg);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
