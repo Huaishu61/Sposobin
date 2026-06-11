@@ -1,5 +1,5 @@
 <template>
-  <div class="app-container">
+  <div class="app-container flex-workspace-mode">
     <header class="app-header">
       <div class="top-right-actions">
         <button @click="showDonateModal = true" class="modern-btn btn-success donate-btn">
@@ -36,70 +36,94 @@
       </div>
     </header>
 
-    <div class="main-layout">
-      <section class="control-panel glass-card">
-        <div class="form-group">
-          <label class="form-label">
-            工作模式 (App Mode)
-            <button @click="openHelpModal" class="help-trigger-btn" title="查看当前工作模式引导说明">❓</button>
-          </label>
-          <div class="segmented-control">
-            <input type="radio" id="mode-free" value="FREE" v-model="store.mode" @change="resetState">
-            <label for="mode-free">自由模式</label>
-            <input type="radio" id="mode-soprano" value="SOPRANO" v-model="store.mode" @change="resetState">
-            <label for="mode-soprano">高音题模式</label>
-            <input type="radio" id="mode-compose" value="COMPOSE" v-model="store.mode" @change="resetState">
-            <label for="mode-compose">旋律写作模式</label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">全局调性 (Tonality)</label>
-          <select v-model="store.key_name" @change="resetState" class="modern-select" :disabled="store.mode !== 'FREE'">
-            <option v-for="key in keys" :key="key" :value="key">{{ key }}</option>
-          </select>
-        </div>
-      </section>
-
-      <transition name="fade">
-        <PianoKeyboard 
-          v-if="store.mode !== 'FREE'" 
+    <div class="workspace-main-grid">
+      
+      <aside class="workspace-wing left-wing">
+        <ChordSelector 
+          type="diatonic"
+          :categories="store.categories"
           :mode="store.mode"
-          @note-click="onPianoNoteInput"
-          @submit-soprano="startSopranoMode"
+          :target-melody="store.target_melody"
+          :history="store.history"
+          :pending-note="store.pending_note"
+          @chord-select="sendAction"
         />
-      </transition>
+      </aside>
 
-      <section class="score-section glass-card">
-        <div class="toolbar">
-          <div class="btn-group">
-            <button @click="playSequence" class="modern-btn btn-success">
-              <span class="icon">▶</span> 试听序列
-            </button>
-            <button @click="resetState" class="modern-btn btn-danger">
-              <span class="icon">🗑️</span> 清空画板
-            </button>
+      <main class="workspace-center-stack">
+        <section class="control-panel glass-card">
+          <div class="form-group">
+            <label class="form-label">
+              工作模式 (App Mode)
+              <button @click="openHelpModal" class="help-trigger-btn" title="查看当前工作模式引导说明">❓</button>
+            </label>
+            <div class="segmented-control">
+              <input type="radio" id="mode-free" value="FREE" v-model="store.mode" @change="resetState">
+              <label for="mode-free">自由模式</label>
+              <input type="radio" id="mode-soprano" value="SOPRANO" v-model="store.mode" @change="resetState">
+              <label for="mode-soprano">高音题模式</label>
+              <input type="radio" id="mode-compose" value="COMPOSE" v-model="store.mode" @change="resetState">
+              <label for="mode-compose">旋律写作模式</label>
+            </div>
           </div>
-          <div class="hint-text">
-            <span>💡 提示：点击五线谱上的和弦可将其 <b>断点回退</b></span>
+          <div class="form-group">
+            <label class="form-label">全局调性 (Tonality)</label>
+            <select v-model="store.key_name" @change="resetState" class="modern-select" :disabled="store.mode !== 'FREE'">
+              <option v-for="key in keys" :key="key" :value="key">{{ key }}</option>
+            </select>
           </div>
+        </section>
+
+        <transition name="fade">
+          <PianoKeyboard 
+            v-if="store.mode !== 'FREE'" 
+            :mode="store.mode"
+            @note-click="onPianoNoteInput"
+            @submit-soprano="startSopranoMode"
+          />
+        </transition>
+
+        <section class="score-section glass-card">
+          <div class="toolbar">
+            <div class="btn-group">
+              <button @click="playSequence" class="modern-btn btn-success">
+                <span class="icon">▶</span> 试听序列
+              </button>
+              <button @click="resetState" class="modern-btn btn-danger">
+                <span class="icon">🗑️</span> 清空画板
+              </button>
+            </div>
+            <div class="hint-text">
+              <span>💡 提示：点击五线谱上的和弦可将其 <b>断点回退</b></span>
+            </div>
+          </div>
+          <ScoreRenderer 
+            :render-data="store.renderData"
+            :history-length="store.history.length"
+            :target-melody-length="store.target_melody.length"
+            :playback-index="store.playbackIndex"
+            @rewind="rewindTo"
+          />
+        </section>
+
+        <div v-if="isCategoriesEmpty" class="global-empty-indicator glass-card">
+          <div class="empty-icon">🧩</div>
+          <h3>{{ getPromptText() }}</h3>
         </div>
-        <ScoreRenderer 
-          :render-data="store.renderData"
-          :history-length="store.history.length"
-          :target-melody-length="store.target_melody.length"
-          :playback-index="store.playbackIndex"
-          @rewind="rewindTo"
-        />
-      </section>
+      </main>
 
-      <ChordSelector 
-        :categories="store.categories"
-        :mode="store.mode"
-        :target-melody="store.target_melody"
-        :history="store.history"
-        :pending-note="store.pending_note"
-        @chord-select="sendAction"
-      />
+      <aside class="workspace-wing right-wing">
+        <ChordSelector 
+          type="chromatic"
+          :categories="store.categories"
+          :mode="store.mode"
+          :target-melody="store.target_melody"
+          :history="store.history"
+          :pending-note="store.pending_note"
+          @chord-select="sendAction"
+        />
+      </aside>
+
     </div>
 
     <transition name="modal">
@@ -238,12 +262,11 @@ const store = reactive({
   history: [],
   pending_note: null,
   renderData: { sigs: [], nodes: [] },
-  categories: { diatonic: {}, tonicization: {} },
+  categories: { diatonic: {}, chromatic: {} },
   playbackIndex: null,
   debug_message: null
 });
 
-// UI 状态
 const showUpdateReportModal = ref(false);
 const showDonateModal = ref(false);
 const showHelpModal = ref(false);
@@ -255,14 +278,20 @@ const issueSourceInput = ref("");
 const generalFeedbackEmail = ref("");
 const issueEmailInput = ref("");
 
+const isCategoriesEmpty = computed(() => {
+  const dLen = Object.keys(store.categories?.diatonic || {}).length;
+  const cLen = Object.keys(store.categories?.chromatic || {}).length;
+  return dLen === 0 && cLen === 0;
+});
+
 const isUnsolvableDAGErr = computed(() => {
   return store.debug_message && store.debug_message.includes("=== 启动 DAG 连通性诊断探针 ===");
 });
 
 const modeHelpData = {
-  FREE: { title: "🎵 自由模式", rules: ["1. 任意切换左侧全局调性。", "2. 点击下方功能按钮生成和声。", "3. 在五线谱点击和弦可断点回退。"] },
-  SOPRANO: { title: "⚡ 高音题模式", rules: ["1. 输入音高文本或弹奏。", "2. 点击生成推演路径。", "3. 根据候选按钮前进。"] },
-  COMPOSE: { title: "🎹 旋律写作模式", rules: ["1. 先选定旋律音高。", "2. 下方按钮自动过滤合法和弦。", "3. 固化和声并等待下一步。"] }
+  FREE: { title: "🎵 自由模式", rules: ["1. 自由选择两翼面板的可行和弦。", "2. 系统将实时运算最优声部进行。", "3. 点击五线谱节点即可精准回退状态。"] },
+  SOPRANO: { title: "⚡ 高音题模式", rules: ["1. 输入高音旋律序列并运行 DAG 寻优。", "2. 左右两侧面板将精细过滤符合法则的级进和弦。", "3. 顺次点击推进，直至乐谱拼装完成。"] },
+  COMPOSE: { title: "🎹 旋律写作模式", rules: ["1. 弹奏一个旋律音高。", "2. 左右两侧面板将计算并点亮功能。"] }
 };
 
 let mainLimiter = null;
@@ -279,7 +308,6 @@ function initAudioEngine() {
   }
 }
 
-// 🌟 修复后的核心同步逻辑：加入报错提醒
 async function syncBackend(action_chord = null) {
   store.debug_message = null;
   try {
@@ -297,7 +325,6 @@ async function syncBackend(action_chord = null) {
     });
     
     if (!res.ok) throw new Error("Server responded with " + res.status);
-    
     const data = await res.json();
     Object.assign(store, data);
     
@@ -306,12 +333,10 @@ async function syncBackend(action_chord = null) {
     }
   } catch (e) {
     console.error(e);
-    // 🌟 加回了警报！
-    alert("无法连通 Python 算法内核！\n请确保后端服务 (uvicorn app:app) 已启动，并且 vite.config.js 配置了正确的 /api 代理。");
+    alert("无法连通 Python 算法内核！\n请确保后端服务 (uvicorn app:app) 已启动，并且本地代理通畅。");
   }
 }
 
-// 播放与交互逻辑
 async function playSingleChord(voices) {
   await Tone.start();
   initAudioEngine();
@@ -350,7 +375,6 @@ function sendAction(chord) { syncBackend(chord); }
 function rewindTo(index) { store.history = store.history.slice(0, index + 1); store.pending_note = null; syncBackend(); }
 function resetState() { store.history = []; store.target_melody = []; store.pending_note = null; store.playbackIndex = null; store.debug_message = null; syncBackend(); }
 
-// 弹窗辅助函数
 function openHelpModal() { currentHelpMode.value = store.mode; showHelpModal.value = true; }
 function closeUpdateReportModal() {
   showUpdateReportModal.value = false;
@@ -363,6 +387,12 @@ function closeUpdateReportModal() {
 function openGeneralFeedbackModal() { generalFeedbackText.value = ""; generalFeedbackEmail.value = ""; generalFeedbackModalOpen.value = true; }
 function closeDebugModal() { store.debug_message = null; }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+function getPromptText() {
+  if (store.mode === 'SOPRANO') return store.target_melody.length > 0 ? '路径穷尽或前方发生法则锁死' : '等待输入旋律序列';
+  if (store.mode === 'COMPOSE') return store.pending_note ? '计算可行声部连接中...' : '请在上方键盘选定下一步旋律音';
+  return '引擎正在进行通路剪枝排查...';
+}
 
 async function postIssueToBackend(sourceInfo) {
   try {
