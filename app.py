@@ -14,7 +14,8 @@ from dna import MAJOR_DNA, MINOR_DNA, PITCH_Y
 from engine import build_full_dag, calculate_best_voicing, get_chord_candidates, get_chord_siblings, tuple_to_v, v_to_tuple
 from rules import evaluate_voicing
 
-app = FastAPI(title="Sposobin Harmony Engine V1.1 Pro")
+# ⚡ V1.2 专业升级版：注入全量声部对齐与熔断机制
+app = FastAPI(title="Sposobin Harmony Engine V1.2 Pro")
 
 # [管理看板] 核心指标内存计数器
 SERVER_METRICS = {
@@ -79,7 +80,7 @@ def format_bytes(b: int) -> str:
         b /= 1024
     return f"{b:.2f} PB"
 
-# 🌟 新增：提报信息数据模型
+# 新增：提报信息数据模型
 class IssueReportRequest(BaseModel):
     mode: str
     key_name: str
@@ -87,7 +88,7 @@ class IssueReportRequest(BaseModel):
     history: List[dict]
     source_info: str
 
-# 🌟 新增：接收用户错题上报 API 接口
+# 新增：接收用户错题上报 API 接口
 @app.post("/api/submit_issue")
 def submit_issue(req: IssueReportRequest):
     history_path = " -> ".join([item["chord"] for item in req.history]) if req.history else "无(第一步断链)"
@@ -102,7 +103,7 @@ def submit_issue(req: IssueReportRequest):
     })
     return {"status": "success", "message": "已成功记录至云端监控面板"}
 
-# [管理监控后台看板视图] 整合错题明细展现
+# [管理监控后台看板视图]
 @app.get("/admin", response_class=HTMLResponse)
 def get_admin_dashboard(username: str = Depends(authenticate_admin)):
     total_users = len(SERVER_METRICS["unique_ips"])
@@ -110,7 +111,6 @@ def get_admin_dashboard(username: str = Depends(authenticate_admin)):
     traffic_in = format_bytes(SERVER_METRICS["bytes_ingress"])
     traffic_out = format_bytes(SERVER_METRICS["bytes_egress"])
     
-    # 动态组装错题数据 HTML 表格行
     table_rows = ""
     if not GLOBAL_ISSUES_POOL:
         table_rows = """<tr><td colspan="4" class="p-4 text-center text-slate-500 italic">🎉 暂无用户提报断链死胡同或教材错题</td></tr>"""
@@ -209,7 +209,7 @@ class EngineRequest(BaseModel):
 
 
 # ==========================================
-# 🌟 新增：和弦家族自动映射表 (语义 -> 物理)
+# 和弦家族自动映射表 (语义 -> 物理)
 # ==========================================
 CHORD_FAMILIES = {
     "T": ["T", "T不完全", "T双三"],
@@ -237,7 +237,6 @@ def get_cached_dag(key_name, target_melody, active_dna_db, key_info):
     return dag
 
 def format_chord_name(name):
-    # 彻底抹除底层结构后缀，让五线谱上的和弦标记保持纯粹的学术审美
     clean_name = name.replace("♮⁵", "").replace("♭⁵", "").replace("不完全", "").replace("双三", "")
     base_name = clean_name.split('/')[0] if '/' in clean_name else clean_name
     suffix = "/" + clean_name.split('/')[1] if '/' in clean_name else ""
@@ -335,7 +334,6 @@ def sync_state(req: EngineRequest):
     debug_msg = None 
 
     if req.action_chord:
-        # 🌟 自动将用户传入的 "T" 展开为 ["T", "T不完全", "T双三"]
         target_chord_base = req.action_chord
         target_variants = CHORD_FAMILIES.get(target_chord_base, [target_chord_base])
         
@@ -349,7 +347,6 @@ def sync_state(req: EngineRequest):
             if dag_layers:
                 step = len(req.history)
                 valid_states = []
-                # 遍历所有物理变体，从 DAG 图中收集所有合法的连接可能
                 for tc in target_variants:
                     if step == 0: 
                         valid_states.extend([s for s in dag_layers[0].keys() if s[0] == tc])
@@ -394,14 +391,15 @@ def sync_state(req: EngineRequest):
             else:
                 best_overall_path = None
                 best_cost = 999999
-                # 针对每一种变体计算一次动态规划，寻找整体惩罚值最低的完美路线
                 for tc in target_variants:
                     chord_sequence = [item["chord"] for item in req.history] + [tc]
                     global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, None)
                     if global_path: 
-                        last_c, last_v = req.history[-1]["chord"], req.history[-1]["voices"]
+                        last_c = req.history[-1]["chord"]
+                        # ⚡ V1.2 算法核心对齐修复：必须提取 DP 寻优机制中调整后的历史排列，彻底熔断断层漏洞
+                        last_v_optimized = global_path[-2] 
                         curr_v = global_path[-1]
-                        cost = evaluate_voicing(last_v, curr_v, last_c, tc, key_info)
+                        cost = evaluate_voicing(last_v_optimized, curr_v, last_c, tc, key_info)
                         if cost < best_cost:
                             best_cost = cost
                             best_overall_path = (tc, global_path)
@@ -482,17 +480,13 @@ def sync_state(req: EngineRequest):
     else:
         last_item = req.history[-1]
         
-        # 🌟 修复后的核心处理逻辑，包含全模式的同和弦转换支持 🌟
         if req.mode == "COMPOSE":
             if req.pending_note is not None:
                 last_c, last_v = last_item["chord"], last_item["voices"]
                 possible_nexts = set()
-                # 提取 DNA 定义中的 next 及它们的衍生兄弟
                 for nxt in active_dna_db.get(last_c, {}).get("next", []):
                     possible_nexts.add(nxt)
                     possible_nexts.update(get_chord_siblings(nxt, active_dna_db))
-                
-                # 追加自身和弦的兄弟，支持同功能/同和弦内部转换
                 possible_nexts.update(get_chord_siblings(last_c, active_dna_db))
                 
                 for nxt_c in possible_nexts:
@@ -504,12 +498,9 @@ def sync_state(req: EngineRequest):
         elif req.mode == "FREE":
             last_c, last_v = last_item["chord"], last_item["voices"]
             possible_nexts = set()
-            # 提取 DNA 定义中的 next 及它们的衍生兄弟
             for nxt in active_dna_db.get(last_c, {}).get("next", []):
                 possible_nexts.add(nxt)
                 possible_nexts.update(get_chord_siblings(nxt, active_dna_db))
-                
-            # 追加自身和弦的兄弟，支持同功能/同和弦内部转换
             possible_nexts.update(get_chord_siblings(last_c, active_dna_db))
             
             for nxt_c in possible_nexts:
@@ -518,7 +509,6 @@ def sync_state(req: EngineRequest):
                         if evaluate_voicing(last_v, nxt_v, last_c, nxt_c, key_info) < 999999:
                             next_chords.append(nxt_c); break
 
-    # 🌟 智能合并：将引擎深层推演出的变体名称，全数洗净折叠回大类！
     folded_next_chords = set()
     for chord in next_chords:
         folded_next_chords.add(get_base_chord(chord))
@@ -534,7 +524,6 @@ def sync_state(req: EngineRequest):
     if is_dead_end:
         debug_msg = "⚠️ 死胡同警告：当前的声部排列导致前方无路可走！\n\n【诊断信息】\n引擎已经穷尽了所有合法的和声连接，但在严格遵守声部进行法则的前提下，无法找到下一步的合法排列。\n\n👉 建议：直接点击乐谱上历史节点进行【状态回退】！"
 
-    # 🌟 拨乱反正：让左边只有纯粹的自然音阶三大功能，把重属、导功能、变和弦悉数赶去右边半音舱
     diatonic = {
         "主功能组 (T / t / DT)": [], 
         "下属功能组 (S / s / TS_VI / VII)": [], 
@@ -547,7 +536,6 @@ def sync_state(req: EngineRequest):
     }
     
     for chord in next_chords:
-        # 1. 离调副功能组划分
         if "/" in chord and not chord.startswith(("It", "Ger", "Fr")):
             target_deg = chord.split('/')[1]
             if chord.startswith(("D", "Dᵥᵢᵢ")):
@@ -557,8 +545,6 @@ def sync_state(req: EngineRequest):
             if cat not in chromatic: 
                 chromatic[cat] = []
             chromatic[cat].append(chord)
-            
-        # 2. 变音与正统半音功能划分
         else:
             if chord.startswith(("N", "It", "Ger", "Fr")): 
                 chromatic["变和弦组 (N / +6)"].append(chord)
@@ -584,7 +570,6 @@ def sync_state(req: EngineRequest):
         "target_melody": req.target_melody,
         "pending_note": req.pending_note, 
         "renderData": get_render_data(req.history, key_info, req.target_melody, req.pending_note),
-        # 🌟 前后端字段完全对齐为 diatonic 和 chromatic
         "categories": {
             "diatonic": {k: v for k, v in diatonic.items() if v}, 
             "chromatic": {k: v for k, v in chromatic.items() if v}

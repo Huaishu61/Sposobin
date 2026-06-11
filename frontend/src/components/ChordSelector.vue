@@ -90,7 +90,8 @@ function parseChord(chordStr) {
   let topNum = '';
   let bottomNum = '';
   
-  s = s.replace('ᵥᵢᵢ', 'vii').replace('ᵢᵢ', 'ii');
+  // ⚡ V1.2 修复核心：抢在 'ᵢᵢ' 被替换前，增加 'ᵢᵢᵢ' 的优先拦截替换，彻底瓦解吞码 Bug
+  s = s.replace('ᵥᵢᵢ', 'vii').replace('ᵢᵢᵢ', 'iii').replace('ᵢᵢ', 'ii');
   
   // 🌟 1. 抢先阻断拦截 VI 级特征
   if (s.startsWith('VI_阻碍')) { 
@@ -103,7 +104,7 @@ function parseChord(chordStr) {
     core = '♭' + (isMinorKey.value ? 'tS' : 'TS'); degree = 'VI'; s = s.slice(3); 
   }
   
-  // 🌟 2. 音级级数清道夫（自长至短严密洗码，100% 阻断 iii 被解构为 ii）
+  // 🌟 2. 音级级数清道夫
   if (degree === '') {
     if (s.includes('vii') || s.includes('VII')) {
       degree = 'VII';
@@ -143,9 +144,9 @@ function parseChord(chordStr) {
   else if (s.includes('₅₆') || s.includes('56')) { topNum = '6'; bottomNum = '5'; }
   else if (s.includes('₃₄') || s.includes('34')) { topNum = '4'; bottomNum = '3'; }
   else if (s.includes('₇⁶') || s.includes('76')) { topNum = '6'; bottomNum = '7'; }
-  else if (s.includes('₆') || s.includes('6')) { subText = '6'; }
-  else if (s.includes('₇') || s.includes('7')) { subText = '7'; }
-  else if (s.includes('₂') || s.includes('2')) { subText = '2'; }
+  else if (s.includes('₆')) { subText = '6'; }
+  else if (s.includes('₇')) { subText = '7'; }
+  else if (s.includes('₂')) { subText = '2'; }
   else if (s.includes('₉♭')) { subText = '9'; superText = '♭'; }
   else if (s.includes('₉')) { subText = '9'; }
   

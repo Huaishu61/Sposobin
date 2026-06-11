@@ -2,7 +2,7 @@
   <div class="app-container flex-workspace-mode">
     <header class="app-header">
       <div class="logo-area">
-        <h1>Sposobin Engine <span class="badge">1.1 Pro</span></h1>
+        <h1>Sposobin Engine <span class="badge">V1.2</span></h1>
         <p class="subtitle">斯波索宾四部和声写作台</p>
         
         <div class="author-credits">
@@ -28,7 +28,7 @@
           <span class="icon">🔋</span> 帮服务器续命一天
         </button>
         <button @click="showUpdateReportModal = true" class="modern-btn btn-primary update-top-btn">
-          <span class="icon">🚀</span> 更新公告
+          <span class="icon">🚀</span> 历史更新公告
         </button>
         <button @click="openGeneralFeedbackModal" class="modern-btn btn-danger feedback-top-btn">
           <span class="icon">💬</span> 反馈问题
@@ -36,7 +36,7 @@
       </div>
     </header>
 
-    <div class="workspace-main-grid">
+    <div class="workspace-main-grid" :style="{ pointerEvents: isProcessing ? 'none' : 'auto', opacity: isProcessing ? 0.75 : 1 }">
       <aside class="workspace-wing left-wing">
         <ChordSelector 
           type="diatonic"
@@ -66,7 +66,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">全局调性 (Tonality)</label>
+            <label class="form-label">全局调性 (Key)</label>
             <select v-model="store.key_name" @change="resetState" class="modern-select" :disabled="store.mode !== 'FREE'">
               <option v-for="key in keys" :key="key" :value="key">{{ key }}</option>
             </select>
@@ -148,17 +148,53 @@
 
     <transition name="modal">
       <div v-if="showUpdateReportModal" class="help-overlay" @click="closeUpdateReportModal">
-        <div class="help-window" style="width: 560px;" @click.stop>
+        <div class="help-window" style="width: 600px;" @click.stop>
           <div class="help-header" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); color: white;">
-            <h3 style="color: white; display: flex; align-items: center; gap: 8px;">🚀 斯波索宾和声写作台 · 1.1 升级报告</h3>
+            <h3 style="color: white; display: flex; align-items: center; gap: 8px;">🚀 Sposobin 写作台 · 历史更新日志</h3>
             <button class="close-help-btn" style="color: rgba(255,255,255,0.8);" @click="closeUpdateReportModal">✕</button>
           </div>
-          <div class="help-body" style="gap: 16px; max-height: 65vh; overflow-y: auto;">
-             <div class="update-section">
-              <h4 class="update-section-title" style="color: #F59E0B;">🚀 Bravura SMuFL 引擎重构</h4>
-              <p class="update-text">本次更新引入了 Steinberg 旗舰级开源音乐字体 Bravura，实现了专业出版物级别的矢量五线谱渲染。</p>
+          
+          <div class="help-body" style="gap: 16px; max-height: 65vh; overflow-y: auto; padding-right: 12px;">
+            
+            <div class="version-block" style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; background: #F0F9FF; border-left: 4px solid #0EA5E9;">
+              <h4 style="margin: 0 0 12px 0; color: #0369A1; font-size: 15px; display: flex; align-items: center; justify-content: space-between;">
+                <span>🔥 V1.2 体验与功能重构</span>
+                <span style="font-size: 11px; background: #0EA5E9; color: white; padding: 2px 8px; border-radius: 99px;">Latest</span>
+              </h4>
+              <div class="update-section" style="margin-bottom: 8px;">
+                <h5 style="margin: 0 0 4px 0; color: #D97706; font-size: 13px;">🛠️ 底层级进铁律纠偏</h5>
+                <p style="margin: 0; font-size: 13px; color: #334155;">100%强制拦截“四部同向进行”与微观“声部超越”漏洞，代码级筑牢算法防线。</p>
+              </div>
+              <div class="update-section" style="margin-bottom: 8px;">
+                <h5 style="margin: 0 0 4px 0; color: #059669; font-size: 13px;">⚡ 高频流连击防抖与余音截断</h5>
+                <p style="margin: 0; font-size: 13px; color: #334155;">引入网络请求锁节流机制，下发 <code>releaseAll()</code> 瞬间清空轰鸣残音，完美解决由于点击过快造成的错位乱报与播放重复。</p>
+              </div>
+              <div class="update-section">
+                <h5 style="margin: 0 0 4px 0; color: #4F46E5; font-size: 13px;">🎼 副下属全面支持与字体打磨</h5>
+                <p style="margin: 0; font-size: 13px; color: #334155;">两翼面板彻底洗牌，深度优化 Lora 衬线体自适应排版与 Bravura 乐谱渲染。自由模式下选择副下属和弦，系统将智能重排历史最优路径。</p>
+              </div>
             </div>
+
+            <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px;">
+              <h4 style="margin: 0 0 10px 0; color: #64748B; font-size: 14px;">🛠️ V1.1 算法规则与连通性大修</h4>
+              <div class="update-section">
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #64748B; line-height: 1.7;">
+                  <li><b>异常阻断修复：</b>修复了 S₆-D₆ 连接、同和弦转换报错、T₆-N₆ 寻优中断问题，以及经过/辅助四六和弦的推算异常。</li>
+                  <li><b>离调与通路补全：</b>新增通向那不勒斯和弦 (N) 的离调功能；打通 DTᵢᵢᵢ→D/VI、Sᵢᵢ→DD、TS_VI→D/II 等关键进行通路。</li>
+                  <li><b>和弦结构放宽与扩充：</b>解除增六和弦降6级音必须在低音的强制限制；新增属七附加六度音 (D₇⁶)；修复导七和弦各转位（如 Dᵥᵢᵢ₃₄ 的下属特性）的连接进行死胡同。</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="version-block">
+              <h4 style="margin: 0 0 8px 0; color: #94A3B8; font-size: 14px;">🎉 V1.0 引擎初代上线</h4>
+              <div class="update-section">
+                <p style="margin: 0; font-size: 13px; color: #94A3B8;">建立 Python + Vue 前后端分离架构；内置自由模式、高音题模式、旋律写作模式；搭载 DAG 全局寻优算法内核与连通性死胡同诊断探针。</p>
+              </div>
+            </div>
+
           </div>
+          
           <div class="help-footer">
             <button class="modern-btn btn-primary" style="background: #0EA5E9; width: 100%;" @click="closeUpdateReportModal">我知道了，开启和声推演</button>
           </div>
@@ -264,6 +300,9 @@ const store = reactive({
   debug_message: null
 });
 
+// ⚡ V1.2 物理级高频防抖锁
+const isProcessing = ref(false);
+
 const showUpdateReportModal = ref(false);
 const showDonateModal = ref(false);
 const showHelpModal = ref(false);
@@ -306,6 +345,10 @@ function initAudioEngine() {
 }
 
 async function syncBackend(action_chord = null) {
+  // ⚡ 网络请求节流拦截：前一个同步尚未落脚时，强制丢弃高频点击触发
+  if (isProcessing.value) return;
+  isProcessing.value = true;
+
   store.debug_message = null;
   try {
     const res = await fetch("/api/sync_state", {
@@ -331,27 +374,29 @@ async function syncBackend(action_chord = null) {
   } catch (e) {
     console.error(e);
     alert("无法连通 Python 算法内核！\n请确保后端服务 (uvicorn app:app) 已启动，并且本地代理通畅。");
+  } finally {
+    isProcessing.value = false;
   }
 }
 
 async function playSingleChord(voices) {
   await Tone.start();
   initAudioEngine();
+  
+  // ⚡ V1.2 音频总线瞬态熔断：在发声前切断一切未释放的旧轰鸣残音，防重叠积压
+  globalSynth.releaseAll();
+  
   const freqs = Object.values(voices).map(midi => Tone.Frequency(midi, "midi").toFrequency());
   globalSynth.triggerAttackRelease(freqs, "2n");
 }
 
-// 🌟 修复：引入一个数组，用来精准追踪和管理所有运行中的定时器
 let playbackTimeouts = [];
 
-// 🌟 修复：新增专属的强行终止清理函数
 function stopSequence() {
-  // 1. 强行清除所有前端 UI 高亮游标的定时器
   playbackTimeouts.forEach(clearTimeout);
   playbackTimeouts = [];
   store.playbackIndex = null;
 
-  // 2. 销毁并重建音频合成器，瞬间熔断、切断所有积压在未来的音频调度
   if (globalSynth) {
     globalSynth.dispose();
     globalSynth = null;
@@ -361,8 +406,6 @@ function stopSequence() {
 
 async function playSequence() {
   if (store.history.length === 0) return;
-  
-  // 🌟 修复：每次点击试听前，先执行熔断清理，确保音频轨道绝对干净
   stopSequence();
   
   await Tone.start();
@@ -373,8 +416,6 @@ async function playSequence() {
   store.history.forEach((item, index) => {
     const freqs = Object.values(item.voices).map(midi => Tone.Frequency(midi, "midi").toFrequency());
     globalSynth.triggerAttackRelease(freqs, "4n", now + index * duration);
-    
-    // 🌟 修复：将定时器 ID 悉数捕获，存入托管池中
     const t1 = setTimeout(() => { store.playbackIndex = index; }, index * duration * 1000);
     playbackTimeouts.push(t1);
   });
@@ -396,7 +437,7 @@ function startSopranoMode(melodySequence) {
 }
 
 function sendAction(chord) { syncBackend(chord); }
-// 🌟 修复：在用户进行【断点回退】时，必须立刻中断正在试听的过时音频
+
 function rewindTo(index) { 
   stopSequence(); 
   store.history = store.history.slice(0, index + 1); 
@@ -404,7 +445,6 @@ function rewindTo(index) {
   syncBackend(); 
 }
 
-// 🌟 修复：在用户点击【清空画板】时，必须立刻中断正在试听的音频
 function resetState() { 
   stopSequence(); 
   store.history = []; 
@@ -472,11 +512,11 @@ watch(() => store.mode, (newMode) => {
 });
 
 onMounted(() => {
-  document.title = "Sposobin Engine 1.1 Pro";
-  const hasSeenUpdate = localStorage.getItem("seenUpdateReport1.1");
+  document.title = "Sposobin Engine V1.2";
+  const hasSeenUpdate = localStorage.getItem("seenUpdateReport1.2");
   if (!hasSeenUpdate) {
     showUpdateReportModal.value = true;
-    localStorage.setItem("seenUpdateReport1.1", "true");
+    localStorage.setItem("seenUpdateReport1.2", "true");
   }
   syncBackend();
 });
