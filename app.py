@@ -19,7 +19,7 @@ from engine import build_full_dag, calculate_best_voicing, get_chord_candidates,
 from rules import evaluate_voicing
 
 # ⚡ V1.2 专业升级版：注入全量声部对齐与熔断机制
-app = FastAPI(title="Sposobin Harmony Engine V1.2 Pro")
+app = FastAPI(title="Sposobin Harmony Engine V1.3")
 
 # [管理看板] 核心指标内存计数器
 SERVER_METRICS = {

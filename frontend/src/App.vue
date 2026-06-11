@@ -2,7 +2,7 @@
   <div class="app-container flex-workspace-mode">
     <header class="app-header">
       <div class="logo-area">
-        <h1>Sposobin Engine <span class="badge">V1.2</span></h1>
+        <h1>Sposobin Engine <span class="badge">V1.3</span></h1>
         <p class="subtitle">斯波索宾四部和声写作台</p>
         
         <div class="author-credits">
@@ -168,32 +168,56 @@
       <div v-if="showUpdateReportModal" class="help-overlay" @click="closeUpdateReportModal">
         <div class="help-window" style="width: 650px;" @click.stop>
           <div class="help-header" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); color: white;">
-            <h3 style="color: white; display: flex; align-items: center; gap: 8px;">🚀 Sposobin 写作台 · 历史更新日志</h3>
+            <h3 style="color: white; display: flex; align-items: center; gap: 8px;">🚀 Sposobin 写作台 · 版本发布说明</h3>
             <button class="close-help-btn" style="color: rgba(255,255,255,0.8);" @click="closeUpdateReportModal">✕</button>
           </div>
           
           <div class="help-body" style="gap: 16px; max-height: 65vh; overflow-y: auto; padding-right: 12px;">
             
-            <div class="version-block" style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; background: #F0F9FF; border-left: 4px solid #0EA5E9;">
+            <div class="version-block" style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; background: #F0F9FF; border-left: 4px solid #0EA5E9; margin-bottom: 16px;">
               <h4 style="margin: 0 0 12px 0; color: #0369A1; font-size: 15px; display: flex; align-items: center; justify-content: space-between;">
-                <span>🔥 V1.2.1 动态规划 (DP) 与声部平稳进行重构</span>
-                <span style="font-size: 11px; background: #0EA5E9; color: white; padding: 2px 8px; border-radius: 99px;">Latest</span>
+                <span>🔥 V1.3.0 音频引擎物理级控流重构与自适应乐谱排版系统</span>
+                <span style="font-size: 11px; background: #0EA5E9; color: white; padding: 2px 8px; border-radius: 99px;">2026年6月12日 04:04</span>
               </h4>
               <div class="update-section">
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.7;">
-                  <li><b>全局 DP 回溯预测：</b>针对旋律模式引入前瞻动态规划。在候选和弦生成阶段即可预判并重排历史路径，彻底解决因局部贪心算法导致的后续连接死胡同问题。</li>
-                  <li><b>经典进行线性锁优化：</b>针对 Sᵢᵢ₆-T₆-Sᵢᵢ 等典型经过与辅助进行，优化了内声部线性平稳锁的容忍度（支持纯四度隐蔽跳进），并解除了次中音与低音齐唱（Unison）、主六和弦重复三音的底层排斥约束，实现古典和声特例的最优平滑连接。</li>
+                <h5 style="margin: 0 0 6px 0; color: #0f172a; font-size: 13px;">🛠️ 音频引擎与控制流缺陷修复 (Audio Engine & Control Flow Bugfixes)</h5>
+                <ul style="margin: 0 0 12px 0; padding-left: 20px; font-size: 12px; color: #334155; line-height: 1.7;">
+                  <li><b>修复了基于相位调制的变调杂音问题：</b> 弃用了 <code>.toFrequency()</code> 浮点频率映射算法，该算法在多声部并发采样时引发数字插值失真，产生非预期的电子音色。现已统一采用标准音名字符串驱动采样器。</li>
+                  <li><b>修复了首次触发时的卡顿与吞音问题：</b> 原有逻辑在点击和弦时瞬时初始化采样器，导致本地 <code>.mp3</code> 缓冲区未就绪，首个和弦无法发声。修复方案为：将音频资源预加载前置于页面 <code>onMounted</code> 生命周期。</li>
+                  <li><b>修复了高频交互下的音频交叠问题：</b> 废弃了向未来时间轴无序排程的 <code>triggerAttackRelease</code> 方案。新方案采用 <code>triggerAttack</code> 自由流模型，并在新和弦触发的微秒级时间窗口内，以 <code>0.05秒</code> 快速包络强制终止前序音符释放，消除声音堆叠混叠。</li>
+                  <li><b>修复了序列回放导致的线程劫持与界面锁死问题：</b> 根除了因后台递归状态机无法中断，导致“试听序列”功能长时间劫持UI线程的严重缺陷。通过引入 <code>isPlaying</code> 状态锁并重构回放调度逻辑，现支持一键紧急终止。</li>
+                  <li><b>修复了并发交互引发的状态错位问题：</b> 针对试听过程中，通过两侧面板推进和弦、触发断点回退或清空画布等操作导致的游标与音频同步异常，实现了前级交互总线的无条件线程销毁(硬熔断)机制。</li>
+                  <li><b>修复了未定义变量导致的运行时中断：</b> 补充了缺失的局部变量声明，解决了系统频繁抛出 <code>ReferenceError: playbackTimeouts is not defined</code>，从而阻断和弦数据同步的问题。</li>
+                </ul>
+
+                <h5 style="margin: 0 0 6px 0; color: #0f172a; font-size: 13px;">📐 出版级乐谱排版优化 (Professional Engraving Refinements)</h5>
+                <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #334155; line-height: 1.7;">
+                  <li><b>修复了复杂调号下的元素遮挡问题：</b> 废弃了固定 <code>layout.firstNodeX</code> 参数，建立了“谱号-调号-拍号-首和弦”全链路动态排版模型。创新性地引入了控制区域右边界至首和弦距离恒为标准步长 <code>1/1.7</code> 的黄金几何分割比，确保视觉清晰。</li>
+                  <li><b>实现了SMuFL标准拍号渲染：</b> 移除了网页无衬线体数字，全面采用符合国际音乐印刷规范的 <b>Bravura</b> 专用字体，通过高位Unicode字符动态抓取并渲染垂直堆叠的拍号符号。</li>
+                  <li><b>实现了自适应非对称小节线跨度：</b> 封装了全新的 <code>getNodeX(index)</code> 动态位移函数，使得跨越小节线的和弦组在视觉上自动生成 <code>16px</code> 的呼吸过渡区。播放高亮游标已实现自动变速对齐，杜绝了视觉漂移。</li>
+                  <li><b>优化了小节线右侧紧凑依附的对齐逻辑：</b> 摒弃了均匀对齐算法，重构线段几何模型，使小节线在视觉上与右侧强拍首和弦保持恒定紧凑，将额外空间释放给前一乐句尾部，复现了传统出版物的空间美学。</li>
+                  <li><b>修复了空白待定区域的休止符显示问题：</b> 移除了高低音题模式下，未填充声部区域密集显示的黑色四分休止符(<code>𝄽</code>)。现统一替换为带符干的完整四分音符，渲染为半透明浅灰色(<code>#CBD5E1</code>)，作为后续四部和声谱写的底稿参考。</li>
                 </ul>
               </div>
             </div>
 
-            <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px; padding-top: 8px;">
-              <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px;">🛠️ V1.2 核心渲染机制与交互优化</h4>
+            <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px; padding-top: 4px;">
+              <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px;">🛠️ V1.2.1 动态规划与声部进行重构</h4>
               <div class="update-section">
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.7;">
-                  <li><b>声部进行规则严格化：</b>完善了对“四部同向”及“声部超越（Voice Crossing）”的检测与惩罚机制，确保生成的排列算法严格遵循传统四部和声规范。</li>
-                  <li><b>音频调度与请求节流：</b>引入交互防抖（Debounce）机制，并重构 Web Audio API 的释放逻辑（下发 <code>releaseAll()</code> 状态），解决高频交互下导致的音频堆叠与状态错位。</li>
-                  <li><b>副下属体系与前端排版：</b>全面打通副下属功能组的动态推演逻辑。重构界面面板，优化 Lora 字体排版参数与 Bravura 乐谱渲染库的 SVG 对齐精度。</li>
+                  <li><b>全局动态规划回溯预测：</b> 为旋律模式引入前瞻性动态规划算法。在候选和弦生成阶段预判并重排历史路径，解决了局部贪心算法导致的远期连接失败问题。</li>
+                  <li><b>经典进行线性锁优化：</b> 针对 Sᵢᵢ₆-T₆-Sᵢᵢ 等典型经过与辅助进行，优化了内声部线性平稳锁的容忍度，支持纯四度隐蔽跳进。同时，解除了次中音与低音同度进行(Unison)及主六和弦重复三音的底层排斥约束，实现了古典和声特例的最优平滑连接。</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px;">
+              <h4 style="margin: 0 0 10px 0; color: #64748B; font-size: 14px;">🛠️ V1.2 核心渲染与交互优化</h4>
+              <div class="update-section">
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #64748B; line-height: 1.7;">
+                  <li><b>声部进行规则严格化：</b> 强化了“四部同向”与“声部超越”的检测惩罚机制，确保生成结果严格遵循传统四部和声写作规范。</li>
+                  <li><b>音频调度与请求节流：</b> 引入了交互防抖机制，并重构了Web Audio API的释放逻辑(下发 <code>releaseAll()</code> 状态)，解决了高频交互下的音频堆叠与状态错位问题。</li>
+                  <li><b>副下属体系与前端排版：</b> 全面打通了副下属功能组的动态推演逻辑。重构了界面面板，并优化了Lora字体排版参数与Bravura乐谱渲染库的SVG对齐精度。</li>
                 </ul>
               </div>
             </div>
@@ -202,9 +226,9 @@
               <h4 style="margin: 0 0 10px 0; color: #64748B; font-size: 14px;">🧩 V1.1 和声语汇扩充与连通性修复</h4>
               <div class="update-section">
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #64748B; line-height: 1.7;">
-                  <li><b>异常阻断修复：</b>修复 S₆-D₆、T₆-N₆ 等经典进行的路径阻断问题，优化经过与辅助四六和弦的推导逻辑。</li>
-                  <li><b>离调与通路补全：</b>完善离调和声网络，补全通向那不勒斯六和弦 (N₆) 的路径，打通 DTᵢᵢᵢ→D/VI、Sᵢᵢ→DD、TS_VI→D/II 等关键功能组图（Graph）连接。</li>
-                  <li><b>和弦结构放宽与扩充：</b>修正增六和弦（⁺⁶）的低音音级强制限制，新增属七附加六度音 (D₇⁶) 支持，修复部分导七转位（如 Dᵥᵢᵢ₃₄ 下属特性）的后续连接死锁。</li>
+                  <li><b>异常阻断修复：</b> 修复了S₆-D₆、T₆-N₆等经典进行中的路径阻断问题，并优化了经过与辅助四六和弦的推导逻辑。</li>
+                  <li><b>离调与通路补全：</b> 完善了离调和声网络，补全了至那不勒斯六和弦(N₆)的路径，并打通了DTᵢᵢᵢ→D/VI、Sᵢᵢ→DD、TS_VI→D/II等关键功能组图连接。</li>
+                  <li><b>和弦结构扩充：</b> 修正了增六和弦(⁺⁶)的低音限制，新增属七附加六度音(D₇⁶)支持，并修复了部分导七转位(如Dᵥᵢᵢ₃₄的下属特性)的后续连接死锁。</li>
                 </ul>
               </div>
             </div>
@@ -212,14 +236,14 @@
             <div class="version-block">
               <h4 style="margin: 0 0 8px 0; color: #94A3B8; font-size: 14px;">🏗️ V1.0 引擎底层架构建立</h4>
               <div class="update-section">
-                <p style="margin: 0; font-size: 13px; color: #94A3B8;">基于 Python (FastAPI) + Vue 构建前后端分离架构；实装基于有向无环图 (DAG) 的全局寻优核心算法与连通性探针；提供自由推演、旋律配和声 (Soprano) 及指定和声序列三种标准工作台模式。</p>
+                <p style="margin: 0; font-size: 13px; color: #94A3B8;">基于 Python (FastAPI) + Vue 的前后端分离架构；实装基于有向无环图(DAG)的全局寻优核心算法与连通性探针；提供自由推演、旋律配和声(Soprano)及指定和声序列三种标准工作台模式。</p>
               </div>
             </div>
 
           </div>
           
           <div class="help-footer">
-            <button class="modern-btn btn-primary" style="background: #0EA5E9; width: 100%;" @click="closeUpdateReportModal">我知道了，开启和声推演</button>
+            <button class="modern-btn btn-primary" style="background: #0EA5E9; width: 100%;" @click="closeUpdateReportModal">确认，进入工作台</button>
           </div>
         </div>
       </div>
@@ -654,7 +678,7 @@ watch(() => store.mode, (newMode) => {
 
 onMounted(() => {
   initAudioEngine();
-  document.title = "Sposobin Engine V1.2";
+  document.title = "Sposobin Engine V1.3";
   const hasSeenUpdate = localStorage.getItem("seenUpdateReport1.2");
   if (!hasSeenUpdate) {
     showUpdateReportModal.value = true;
