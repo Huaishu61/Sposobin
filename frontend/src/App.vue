@@ -1,18 +1,6 @@
 <template>
   <div class="app-container flex-workspace-mode">
     <header class="app-header">
-      <div class="top-right-actions">
-        <button @click="showDonateModal = true" class="modern-btn btn-success donate-btn">
-          <span class="icon">🔋</span> 帮服务器续命一天
-        </button>
-        <button @click="showUpdateReportModal = true" class="modern-btn btn-primary update-top-btn">
-          <span class="icon">🚀</span> 更新公告
-        </button>
-        <button @click="openGeneralFeedbackModal" class="modern-btn btn-danger feedback-top-btn">
-          <span class="icon">💬</span> 反馈问题
-        </button>
-      </div>
-
       <div class="logo-area">
         <h1>Sposobin Engine <span class="badge">1.1 Pro</span></h1>
         <p class="subtitle">斯波索宾四部和声写作台</p>
@@ -34,10 +22,21 @@
           </span>
         </div>
       </div>
+
+      <div class="top-right-actions">
+        <button @click="showDonateModal = true" class="modern-btn btn-success donate-btn">
+          <span class="icon">🔋</span> 帮服务器续命一天
+        </button>
+        <button @click="showUpdateReportModal = true" class="modern-btn btn-primary update-top-btn">
+          <span class="icon">🚀</span> 更新公告
+        </button>
+        <button @click="openGeneralFeedbackModal" class="modern-btn btn-danger feedback-top-btn">
+          <span class="icon">💬</span> 反馈问题
+        </button>
+      </div>
     </header>
 
     <div class="workspace-main-grid">
-      
       <aside class="workspace-wing left-wing">
         <ChordSelector 
           type="diatonic"
@@ -123,7 +122,6 @@
           @chord-select="sendAction"
         />
       </aside>
-
     </div>
 
     <transition name="modal">
@@ -237,7 +235,6 @@
         </div>
       </div>
     </transition>
-
   </div>
 </template>
 
@@ -344,8 +341,30 @@ async function playSingleChord(voices) {
   globalSynth.triggerAttackRelease(freqs, "2n");
 }
 
+// 🌟 修复：引入一个数组，用来精准追踪和管理所有运行中的定时器
+let playbackTimeouts = [];
+
+// 🌟 修复：新增专属的强行终止清理函数
+function stopSequence() {
+  // 1. 强行清除所有前端 UI 高亮游标的定时器
+  playbackTimeouts.forEach(clearTimeout);
+  playbackTimeouts = [];
+  store.playbackIndex = null;
+
+  // 2. 销毁并重建音频合成器，瞬间熔断、切断所有积压在未来的音频调度
+  if (globalSynth) {
+    globalSynth.dispose();
+    globalSynth = null;
+  }
+  initAudioEngine();
+}
+
 async function playSequence() {
   if (store.history.length === 0) return;
+  
+  // 🌟 修复：每次点击试听前，先执行熔断清理，确保音频轨道绝对干净
+  stopSequence();
+  
   await Tone.start();
   initAudioEngine();
   const now = Tone.now();
@@ -354,9 +373,14 @@ async function playSequence() {
   store.history.forEach((item, index) => {
     const freqs = Object.values(item.voices).map(midi => Tone.Frequency(midi, "midi").toFrequency());
     globalSynth.triggerAttackRelease(freqs, "4n", now + index * duration);
-    setTimeout(() => { store.playbackIndex = index; }, index * duration * 1000);
+    
+    // 🌟 修复：将定时器 ID 悉数捕获，存入托管池中
+    const t1 = setTimeout(() => { store.playbackIndex = index; }, index * duration * 1000);
+    playbackTimeouts.push(t1);
   });
-  setTimeout(() => { store.playbackIndex = null; }, store.history.length * duration * 1000);
+  
+  const t2 = setTimeout(() => { store.playbackIndex = null; }, store.history.length * duration * 1000);
+  playbackTimeouts.push(t2);
 }
 
 function onPianoNoteInput(midi) {
@@ -372,8 +396,24 @@ function startSopranoMode(melodySequence) {
 }
 
 function sendAction(chord) { syncBackend(chord); }
-function rewindTo(index) { store.history = store.history.slice(0, index + 1); store.pending_note = null; syncBackend(); }
-function resetState() { store.history = []; store.target_melody = []; store.pending_note = null; store.playbackIndex = null; store.debug_message = null; syncBackend(); }
+// 🌟 修复：在用户进行【断点回退】时，必须立刻中断正在试听的过时音频
+function rewindTo(index) { 
+  stopSequence(); 
+  store.history = store.history.slice(0, index + 1); 
+  store.pending_note = null; 
+  syncBackend(); 
+}
+
+// 🌟 修复：在用户点击【清空画板】时，必须立刻中断正在试听的音频
+function resetState() { 
+  stopSequence(); 
+  store.history = []; 
+  store.target_melody = []; 
+  store.pending_note = null; 
+  store.playbackIndex = null; 
+  store.debug_message = null; 
+  syncBackend(); 
+}
 
 function openHelpModal() { currentHelpMode.value = store.mode; showHelpModal.value = true; }
 function closeUpdateReportModal() {

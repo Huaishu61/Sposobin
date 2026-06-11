@@ -61,6 +61,7 @@ defineEmits(['chord-select']);
 const hasDiatonic = computed(() => Object.keys(props.categories?.diatonic || {}).length > 0);
 const hasChromatic = computed(() => Object.keys(props.categories?.chromatic || {}).length > 0);
 
+// 🌟 核心增补：智能提取当前面板是处于大调还是小调环境，用来控制 TS / tS 的大小写性质
 const isMinorKey = computed(() => {
   const diatonicKeys = Object.keys(props.categories?.diatonic || {});
   const mainKey = diatonicKeys.find(k => k.includes('主功能组'));
@@ -73,6 +74,7 @@ function isMinor(coreStr) {
   return firstChar === 't' || (firstChar >= 'a' && firstChar <= 'z');
 }
 
+// 🎼 工业出版级斯波索宾排版切片机
 function parseChord(chordStr) {
   let s = chordStr;
   let secondary = '';
@@ -92,33 +94,39 @@ function parseChord(chordStr) {
   
   s = s.replace('ᵥᵢᵢ', 'vii').replace('ᵢᵢ', 'ii');
   
-  // 🌟 1. 抢先阻断拦截 VI 级特征
+  // 🌟 A. 抢先拦截并剥离 VI 级和弦，将其完美重塑为双功能混合特征符号 (TS_VI / tS_VI)
   if (s.startsWith('VI_阻碍')) { 
-    core = isMinorKey.value ? 'tS' : 'TS'; degree = 'VI'; superText = '阻碍'; s = ''; 
+    core = isMinorKey.value ? 'tS' : 'TS'; 
+    degree = 'VI'; 
+    superText = '阻碍'; 
+    s = ''; 
   }
   else if (s.startsWith('VI')) { 
-    core = isMinorKey.value ? 'tS' : 'TS'; degree = 'VI'; s = s.slice(2); 
+    core = isMinorKey.value ? 'tS' : 'TS'; 
+    degree = 'VI'; 
+    s = s.slice(2); 
   }
   else if (s.startsWith('♭VI')) { 
-    core = '♭' + (isMinorKey.value ? 'tS' : 'TS'); degree = 'VI'; s = s.slice(3); 
+    core = '♭' + (isMinorKey.value ? 'tS' : 'TS'); 
+    degree = 'VI'; 
+    s = s.slice(3); 
   }
-  
-  // 🌟 2. 音级级数清道夫（自长至短严密洗码，100% 阻断 iii 被解构为 ii）
-  if (degree === '') {
-    if (s.includes('vii') || s.includes('VII')) {
-      degree = 'VII';
-      s = s.replace('vii', '').replace('VII', '');
-    } else if (s.includes('iii') || s.includes('III')) {
+  // B. 剥离其他标准级数码
+  else if (s.includes('vii') || s.includes('VII')) {
+    degree = 'VII';
+    s = s.replace('vii', '').replace('VII', '');
+  } else if (s.includes('ii') || s.includes('II')) {
+    if (s.includes('iii') || s.includes('III')) {
       degree = 'III';
       s = s.replace('iii', '').replace('III', '');
-    } else if (s.includes('ii') || s.includes('II')) {
+    } else {
       degree = 'II';
       s = s.replace('ii', '').replace('II', '');
     }
   }
   
-  // 3. 功能主词根回收
-  if (core !== '') { /* 已由 VI 级拦截执行完毕 */ }
+  // C. 抽取纯净功能核心词根
+  if (core !== '') { /* 已被上方 VI 拦截处理 */ }
   else if (s.startsWith('DT')) { core = 'DT'; s = s.slice(2); }
   else if (s.startsWith('♭VII')) { core = '♭VII'; s = s.slice(4); }
   else if (s.startsWith('VII')) { core = 'VII'; s = s.slice(3); }

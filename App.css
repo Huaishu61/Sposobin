@@ -152,7 +152,7 @@ body {
 .cat-title { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* ==========================================================================
-   🎼 衬线流式排版矩阵：自适应尺寸 + 彻底击碎“一行两个”的机械栅格
+   🎼 衬线流式排版矩阵：自适应尺寸 + 彻底击碎"一行两个"的机械栅格
    ========================================================================== */
 .chord-grid-layout {
   display: flex;         
