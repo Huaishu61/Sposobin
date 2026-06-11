@@ -312,7 +312,7 @@ const store = reactive({
   playbackIndex: null,
   debug_message: null
 });
-
+const isPlaying = ref(false); // 🌟 精准新增：控制全局完整回放的状态锁
 // ⚡ V1.2 物理级高频防抖锁
 const isProcessing = ref(false);
 
@@ -349,20 +349,42 @@ const modeHelpData = {
 
 let mainLimiter = null;
 let globalSynth = null;
-
+let playbackTimeouts = []; // 🌟 核心修复：加上这一行，把存放定时器的数组声明出来！
+// 🌟 替换后的本地大钢琴物理采样初始化函数
 function initAudioEngine() {
   if (!mainLimiter) mainLimiter = new Tone.Limiter(-1).toDestination();
   if (!globalSynth) {
-    globalSynth = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: "custom", partials: [1, 0.4, 0.2] },
-      envelope: { attack: 0.04, decay: 0.1, sustain: 0.8, release: 1.2 },
-      volume: -12
+    // 调用本地托管的 Salamander 真实钢琴采样，彻底消除跨国网络卡死和电音感
+    globalSynth = new Tone.Sampler({
+      urls: {
+        "C2": "C2.mp3",
+        "D#2": "Ds2.mp3",
+        "F#2": "Fs2.mp3",
+        "A2": "A2.mp3",
+        "C3": "C3.mp3",
+        "D#3": "Ds3.mp3",
+        "F#3": "Fs3.mp3",
+        "A3": "A3.mp3",
+        "C4": "C4.mp3",
+        "D#4": "Ds4.mp3",
+        "F#4": "Fs4.mp3",
+        "A4": "A4.mp3",
+        "C5": "C5.mp3",
+        "D#5": "Ds5.mp3",
+        "F#5": "Fs5.mp3",
+        "A5": "A5.mp3",
+        "C6": "C6.mp3"
+      },
+      // 🌟 核心修改点：直接指向本地 public 映射出来的绝对根路径
+      baseUrl: "/audio/salamander/", 
+      release: 1.5, // 琴键松开后的自然尾音延续
+      volume: -2
     }).connect(mainLimiter);
   }
 }
 
 async function syncBackend(action_chord = null) {
-  // ⚡ 网络请求节流拦截：前一个同步尚未落脚时，强制丢弃高频点击触发
+  // ⚡ 网络请求节流拦截
   if (isProcessing.value) return;
   isProcessing.value = true;
 
@@ -396,50 +418,99 @@ async function syncBackend(action_chord = null) {
   }
 }
 
+// 单次推进试听（加入物理硬制音机制，彻底消灭疯狂连点时的杂音浆糊）
 async function playSingleChord(voices) {
   await Tone.start();
   initAudioEngine();
+  await Tone.loaded(); // 🌟 强力保证本地缓存完全就绪
   
-  // ⚡ V1.2 音频总线瞬态熔断：在发声前切断一切未释放的旧轰鸣残音，防重叠积压
-  globalSynth.releaseAll();
+  if (globalSynth) {
+    // 🌟 绝招 1：利用微秒级级联包络，模拟真实钢琴消音器瞬间压住琴弦
+    globalSynth.release = 0.05; // 1. 临时改为极短制音（0.05秒）
+    globalSynth.releaseAll();   // 2. 瞬间闷死所有正在轰鸣的旧残音
+    globalSynth.release = 1.5;  // 3. 瞬间恢复新音符的自然 1.5 秒呼吸延音
+  }
   
-  const freqs = Object.values(voices).map(midi => Tone.Frequency(midi, "midi").toFrequency());
-  globalSynth.triggerAttackRelease(freqs, "2n");
+  const notes = Object.values(voices).map(midi => Tone.Frequency(midi, "midi").toNote());
+  
+  // 🌟 绝招 2：改用 triggerAttack 自由发声！
+  // 不往未来时间轴硬塞“释放排程”，让它自然流淌，等到下一次点击时被上面的消音器干净利落地捂死
+  globalSynth.triggerAttack(notes);
 }
-
-let playbackTimeouts = [];
-
+// 🌟 新增函数：强行制音并掐断后台梦游的定时器（直接粘帖在 playSequence 的上方）
 function stopSequence() {
   playbackTimeouts.forEach(clearTimeout);
   playbackTimeouts = [];
   store.playbackIndex = null;
-
-  if (globalSynth) {
-    globalSynth.dispose();
-    globalSynth = null;
-  }
-  initAudioEngine();
+  isPlaying.value = false; // 播放状态解锁
 }
-
+// 🌟 替换：完美 Legato 连奏无缝回放系统（带有一键正反转拦截开关）
 async function playSequence() {
   if (store.history.length === 0) return;
-  stopSequence();
   
+  // 🌟 核心拦截：如果当前正在播放，用户再次点击此按钮，说明想“停下它”
+  // 我们直接调用上面刚写好的 stopSequence() 掐断它，然后直接 return 退出
+  if (isPlaying.value) {
+    stopSequence();
+    return;
+  }
+  
+  stopSequence(); // 先确保上一轮的定时器清理干净
   await Tone.start();
   initAudioEngine();
-  const now = Tone.now();
-  const duration = 0.9;
-  
-  store.history.forEach((item, index) => {
-    const freqs = Object.values(item.voices).map(midi => Tone.Frequency(midi, "midi").toFrequency());
-    globalSynth.triggerAttackRelease(freqs, "4n", now + index * duration);
-    const t1 = setTimeout(() => { store.playbackIndex = index; }, index * duration * 1000);
-    playbackTimeouts.push(t1);
-  });
-  
-  const t2 = setTimeout(() => { store.playbackIndex = null; }, store.history.length * duration * 1000);
-  playbackTimeouts.push(t2);
+  await Tone.loaded();
+
+  isPlaying.value = true; // 状态上锁
+  const intervalMs = 1000; 
+  let currentIndex = 0;
+
+  function playStep() {
+    // 安全熔断：如果播放中途用户强行叫停（isPlaying 变假）或者放完了，立刻退出
+    if (!isPlaying.value || currentIndex >= store.history.length) {
+      store.playbackIndex = null;
+      isPlaying.value = false;
+      return;
+    }
+
+    // 精准联动你的五线谱绿色高亮游标
+    store.playbackIndex = currentIndex;
+    
+    const item = store.history[currentIndex];
+    const notes = Object.values(item.voices).map(midi => Tone.Frequency(midi, "midi").toNote());
+    const isLast = currentIndex === store.history.length - 1;
+
+    if (globalSynth) {
+      globalSynth.release = 0.05;
+      globalSynth.releaseAll();
+      globalSynth.release = 1.5; 
+    }
+
+    if (globalSynth) {
+      globalSynth.triggerAttack(notes);
+    }
+
+    currentIndex++;
+    
+    if (isLast) {
+      const tLast = setTimeout(() => {
+        if (globalSynth) {
+          globalSynth.release = 1.5;
+          globalSynth.releaseAll();
+        }
+        store.playbackIndex = null;
+        isPlaying.value = false; // 曲终播放完毕，自动解锁
+      }, intervalMs * 2.5);
+      playbackTimeouts.push(tLast);
+    } else {
+      const tNext = setTimeout(playStep, intervalMs);
+      playbackTimeouts.push(tNext);
+    }
+  }
+
+  // 鸣枪起跑
+  playStep();
 }
+
 async function exportMusicXML() {
   if (store.history.length === 0) return;
   
@@ -459,19 +530,16 @@ async function exportMusicXML() {
     if (!res.ok) throw new Error("后端导出失败");
     const data = await res.json();
     
-    
     const blob = new Blob([data.xml], { type: "application/vnd.recordare.musicxml+xml" });
     const url = window.URL.createObjectURL(blob);
     const downloadAnchor = document.createElement("a");
     downloadAnchor.href = url;
-    
     
     const cleanKeyName = store.key_name.replace(/\s+/g, '_');
     downloadAnchor.download = `Sposobin_Harmony_${cleanKeyName}.xml`;
     
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
-    
     
     window.URL.revokeObjectURL(url);
     document.body.removeChild(downloadAnchor);
@@ -480,6 +548,7 @@ async function exportMusicXML() {
     alert("❌ 乐谱导出失败：请检查 Python 后端服务是否正常运行。");
   }
 }
+
 function onPianoNoteInput(midi) {
   if (store.mode === 'COMPOSE') {
     store.pending_note = midi;
@@ -492,17 +561,20 @@ function startSopranoMode(melodySequence) {
   if (store.target_melody.length > 0) syncBackend();
 }
 
-function sendAction(chord) { syncBackend(chord); }
+function sendAction(chord) { 
+  stopSequence(); // 🌟 新增：点击两侧面板和弦推进时，立刻掐死后台回放
+  syncBackend(chord); 
+}
 
 function rewindTo(index) { 
-  stopSequence(); 
+  stopSequence(); // 🌟 新增：点击历史节点断点回退时，立刻掐死后台回放
   store.history = store.history.slice(0, index + 1); 
   store.pending_note = null; 
   syncBackend(); 
 }
 
 function resetState() { 
-  stopSequence(); 
+  stopSequence(); // 🌟 新增：点击清空画板时，立刻掐死后台回放
   store.history = []; 
   store.target_melody = []; 
   store.pending_note = null; 
@@ -524,7 +596,6 @@ function openGeneralFeedbackModal() { generalFeedbackText.value = ""; generalFee
 function closeDebugModal() { store.debug_message = null; }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
-// 🌟 兼容判断：让 BASS 模式和 SOPRANO 模式共享同样的文本提示规则
 function getPromptText() {
   if (store.mode === 'SOPRANO' || store.mode === 'BASS') return store.target_melody.length > 0 ? '路径穷尽或前方发生法则锁死' : '等待输入旋律序列';
   if (store.mode === 'COMPOSE') return store.pending_note ? '计算可行声部连接中...' : '请在上方键盘选定下一步旋律音';
@@ -569,6 +640,7 @@ watch(() => store.mode, (newMode) => {
 });
 
 onMounted(() => {
+  initAudioEngine();
   document.title = "Sposobin Engine V1.2";
   const hasSeenUpdate = localStorage.getItem("seenUpdateReport1.2");
   if (!hasSeenUpdate) {
