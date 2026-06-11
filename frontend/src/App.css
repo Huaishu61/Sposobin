@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Bravura';
+  src: url('/Bravura.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block; /* 🌟 核心：强迫 Safari 在字体加载完之前不显示乱码黑框，加载完直接显示正确音符 */
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
 
 :root {
@@ -197,31 +205,33 @@ body {
   user-select: none;
 }
 
-/* 正统正体大写：大调主、下属、属功能组 (T / S / D / TS) */
+/* 正统正体大写：大调主、下属、属功能组 */
 .chord-core {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 500; /* 🌟 极致瘦身：降到 500 */
   color: #0F172A;
+  letter-spacing: -0.5px; /* 🌟 进一步收紧骨架：从 -0.3 改为 -0.5px */
 }
 
-/* 正统古典意大利斜体：小调主、下属、属功能组 (t / s / tS) */
+/* 正统古典意大利斜体：小调主、下属、属功能组 */
 .chord-core.is-minor {
   font-family: 'Lora', 'Georgia', serif;
   font-style: italic;
-  font-weight: 700;
+  font-weight: 500; /* 🌟 极致瘦身：降到 500 */
   font-size: 16px;
   color: #334155; 
   padding-right: 2px;
+  letter-spacing: -0.2px; /* 斜体也可以微微收一点 */
 }
 
-/* 🌟 音级级数右下角沉底小角标 (如 II, III, VII, VI) */
+/* 音级级数右下角沉底小角标 (如 II, III, VII, VI) */
 .chord-degree-sub {
   font-family: 'Lora', 'Georgia', serif;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 500; /* 🌟 降到 500（如果觉得还粗，甚至可以写 400） */
   color: #1E293B;
   align-self: flex-end;
-  margin-bottom: -3px; /* 精准控制垂直下沉沉底 */
+  margin-bottom: -3px;
   margin-left: 1px;
 }
 
@@ -239,14 +249,14 @@ body {
 /* 单重单纯转位低音数字 (如 6, 7, 2) */
 .chord-sub {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 500; /* 🌟 降到 500 */
   color: #1E293B;
   align-self: flex-end;
   margin-bottom: -1px;
   margin-left: 1px;
 }
 
-/* 立体堆叠转位对 */
+/* 立体堆叠转位对 (如 64, 56) */
 .chord-stack {
   display: inline-flex;
   flex-direction: column;
@@ -255,7 +265,7 @@ body {
   line-height: 0.9;
   margin-left: 1.5px;
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 500; /* 🌟 降到 500 */
   color: #0F172A;
 }
 .stack-top { font-size: 10px; }

@@ -197,12 +197,12 @@ def evaluate_voicing(old_voices, new_voices, last_chord_name, target_chord_name,
                 if new_interval in [0, 5, 7]: return 999999
                 else: parallel_penalty += 50
 
-    # 线性平稳锁 (如 S - T6 - SII6)：声部线条必须全平稳，严禁超过2度的跳进
-    is_auxiliary_linear = (last_chord_name in ["S", "s", "S₆", "s₆", "Sᵢᵢ₆", "sᵢᵢ₆"] and target_chord_name in ["T₆", "t₆"]) or \
-                          (last_chord_name in ["T₆", "t₆"] and target_chord_name in ["S", "s", "S₆", "s₆", "Sᵢᵢ₆", "sᵢᵢ₆"])
+    # 线性平稳锁 (如 S - T6 - SII6)：声部线条必须全平稳，严禁超过3度的跳进
+    is_auxiliary_linear = (last_chord_name in ["S", "s", "S₆", "s₆", "Sᵢᵢ₆", "sᵢᵢ₆", "Sᵢᵢ", "sᵢᵢ"] and target_chord_name in ["T₆", "t₆"]) or \
+                          (last_chord_name in ["T₆", "t₆"] and target_chord_name in ["S", "s", "S₆", "s₆", "Sᵢᵢ₆", "sᵢᵢ₆", "Sᵢᵢ", "sᵢᵢ"])
     if is_auxiliary_linear:
         for v in ['S', 'A', 'T']:
-            if abs(new_voices[v] - old_voices[v]) > 2: return 999999
+            if abs(new_voices[v] - old_voices[v]) > 4: return 999999
 
     # 七和弦解决：七音必须强制下行级进解决
     if last_chord_name in ["D₇", "D₅₆", "D₃₄", "D₂", "D₇不完全", "D₇⁶"] and target_chord_name in ["T", "T不完全", "T双三", "T₆", "t", "t不完全", "t₆", "VI", "VI₆", "VI_阻碍"]:

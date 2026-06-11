@@ -148,7 +148,7 @@
 
     <transition name="modal">
       <div v-if="showUpdateReportModal" class="help-overlay" @click="closeUpdateReportModal">
-        <div class="help-window" style="width: 600px;" @click.stop>
+        <div class="help-window" style="width: 650px;" @click.stop>
           <div class="help-header" style="background: linear-gradient(135deg, #0284C7, #0EA5E9); color: white;">
             <h3 style="color: white; display: flex; align-items: center; gap: 8px;">🚀 Sposobin 写作台 · 历史更新日志</h3>
             <button class="close-help-btn" style="color: rgba(255,255,255,0.8);" @click="closeUpdateReportModal">✕</button>
@@ -158,38 +158,43 @@
             
             <div class="version-block" style="border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; background: #F0F9FF; border-left: 4px solid #0EA5E9;">
               <h4 style="margin: 0 0 12px 0; color: #0369A1; font-size: 15px; display: flex; align-items: center; justify-content: space-between;">
-                <span>🔥 V1.2 体验与功能重构</span>
+                <span>🔥 V1.2.1 动态规划 (DP) 与声部平稳进行重构</span>
                 <span style="font-size: 11px; background: #0EA5E9; color: white; padding: 2px 8px; border-radius: 99px;">Latest</span>
               </h4>
-              <div class="update-section" style="margin-bottom: 8px;">
-                <h5 style="margin: 0 0 4px 0; color: #D97706; font-size: 13px;">🛠️ 底层级进铁律纠偏</h5>
-                <p style="margin: 0; font-size: 13px; color: #334155;">100%强制拦截“四部同向进行”与微观“声部超越”漏洞，代码级筑牢算法防线。</p>
-              </div>
-              <div class="update-section" style="margin-bottom: 8px;">
-                <h5 style="margin: 0 0 4px 0; color: #059669; font-size: 13px;">⚡ 高频流连击防抖与余音截断</h5>
-                <p style="margin: 0; font-size: 13px; color: #334155;">引入网络请求锁节流机制，下发 <code>releaseAll()</code> 瞬间清空轰鸣残音，完美解决由于点击过快造成的错位乱报与播放重复。</p>
-              </div>
               <div class="update-section">
-                <h5 style="margin: 0 0 4px 0; color: #4F46E5; font-size: 13px;">🎼 副下属全面支持与字体打磨</h5>
-                <p style="margin: 0; font-size: 13px; color: #334155;">两翼面板彻底洗牌，深度优化 Lora 衬线体自适应排版与 Bravura 乐谱渲染。自由模式下选择副下属和弦，系统将智能重排历史最优路径。</p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155; line-height: 1.7;">
+                  <li><b>全局 DP 回溯预测：</b>针对旋律模式引入前瞻动态规划。在候选和弦生成阶段即可预判并重排历史路径，彻底解决因局部贪心算法导致的后续连接死胡同问题。</li>
+                  <li><b>经典进行线性锁优化：</b>针对 Sᵢᵢ₆-T₆-Sᵢᵢ 等典型经过与辅助进行，优化了内声部线性平稳锁的容忍度（支持纯四度隐蔽跳进），并解除了次中音与低音齐唱（Unison）、主六和弦重复三音的底层排斥约束，实现古典和声特例的最优平滑连接。</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px; padding-top: 8px;">
+              <h4 style="margin: 0 0 10px 0; color: #475569; font-size: 14px;">🛠️ V1.2 核心渲染机制与交互优化</h4>
+              <div class="update-section">
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.7;">
+                  <li><b>声部进行规则严格化：</b>完善了对“四部同向”及“声部超越（Voice Crossing）”的检测与惩罚机制，确保生成的排列算法严格遵循传统四部和声规范。</li>
+                  <li><b>音频调度与请求节流：</b>引入交互防抖（Debounce）机制，并重构 Web Audio API 的释放逻辑（下发 <code>releaseAll()</code> 状态），解决高频交互下导致的音频堆叠与状态错位。</li>
+                  <li><b>副下属体系与前端排版：</b>全面打通副下属功能组的动态推演逻辑。重构界面面板，优化 Lora 字体排版参数与 Bravura 乐谱渲染库的 SVG 对齐精度。</li>
+                </ul>
               </div>
             </div>
 
             <div class="version-block" style="border-bottom: 1px dashed #CBD5E1; margin-bottom: 16px; padding-bottom: 16px;">
-              <h4 style="margin: 0 0 10px 0; color: #64748B; font-size: 14px;">🛠️ V1.1 算法规则与连通性大修</h4>
+              <h4 style="margin: 0 0 10px 0; color: #64748B; font-size: 14px;">🧩 V1.1 和声语汇扩充与连通性修复</h4>
               <div class="update-section">
                 <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #64748B; line-height: 1.7;">
-                  <li><b>异常阻断修复：</b>修复了 S₆-D₆ 连接、同和弦转换报错、T₆-N₆ 寻优中断问题，以及经过/辅助四六和弦的推算异常。</li>
-                  <li><b>离调与通路补全：</b>新增通向那不勒斯和弦 (N) 的离调功能；打通 DTᵢᵢᵢ→D/VI、Sᵢᵢ→DD、TS_VI→D/II 等关键进行通路。</li>
-                  <li><b>和弦结构放宽与扩充：</b>解除增六和弦降6级音必须在低音的强制限制；新增属七附加六度音 (D₇⁶)；修复导七和弦各转位（如 Dᵥᵢᵢ₃₄ 的下属特性）的连接进行死胡同。</li>
+                  <li><b>异常阻断修复：</b>修复 S₆-D₆、T₆-N₆ 等经典进行的路径阻断问题，优化经过与辅助四六和弦的推导逻辑。</li>
+                  <li><b>离调与通路补全：</b>完善离调和声网络，补全通向那不勒斯六和弦 (N₆) 的路径，打通 DTᵢᵢᵢ→D/VI、Sᵢᵢ→DD、TS_VI→D/II 等关键功能组图（Graph）连接。</li>
+                  <li><b>和弦结构放宽与扩充：</b>修正增六和弦（⁺⁶）的低音音级强制限制，新增属七附加六度音 (D₇⁶) 支持，修复部分导七转位（如 Dᵥᵢᵢ₃₄ 下属特性）的后续连接死锁。</li>
                 </ul>
               </div>
             </div>
 
             <div class="version-block">
-              <h4 style="margin: 0 0 8px 0; color: #94A3B8; font-size: 14px;">🎉 V1.0 引擎初代上线</h4>
+              <h4 style="margin: 0 0 8px 0; color: #94A3B8; font-size: 14px;">🏗️ V1.0 引擎底层架构建立</h4>
               <div class="update-section">
-                <p style="margin: 0; font-size: 13px; color: #94A3B8;">建立 Python + Vue 前后端分离架构；内置自由模式、高音题模式、旋律写作模式；搭载 DAG 全局寻优算法内核与连通性死胡同诊断探针。</p>
+                <p style="margin: 0; font-size: 13px; color: #94A3B8;">基于 Python (FastAPI) + Vue 构建前后端分离架构；实装基于有向无环图 (DAG) 的全局寻优核心算法与连通性探针；提供自由推演、旋律配和声 (Soprano) 及指定和声序列三种标准工作台模式。</p>
               </div>
             </div>
 

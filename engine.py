@@ -57,7 +57,7 @@ def get_chord_candidates(chord_name, dna_db, target_s=None):
             valid_A = [a for a in AVAILABLE_NOTES if lower_bound_A <= a <= new_S]
             for new_A in valid_A:
                 lower_bound_T = new_A - 12
-                valid_T = [t for t in AVAILABLE_NOTES if lower_bound_T <= t <= new_A and t > new_bass]
+                valid_T = [t for t in AVAILABLE_NOTES if lower_bound_T <= t <= new_A and t >= new_bass]
                 for new_T in valid_T:
                     all_pcs = [new_S % 12, new_A % 12, new_T % 12, new_bass % 12]
                     if set(all_pcs) != required_classes: continue
@@ -73,7 +73,7 @@ def get_chord_candidates(chord_name, dna_db, target_s=None):
             for combo in itertools.combinations_with_replacement(AVAILABLE_NOTES, 3):
                 new_S, new_A, new_T = sorted(combo, reverse=True)
                 
-                if new_S < new_A or new_A < new_T or new_T <= new_bass: continue
+                if new_S < new_A or new_A < new_T or new_T < new_bass: continue
                 if (new_S - new_A) > 12 or (new_A - new_T) > 12: continue
                     
                 all_pcs = [new_S % 12, new_A % 12, new_T % 12, new_bass % 12]
@@ -186,11 +186,28 @@ def build_full_dag(target_melody, dna_db, key_info):
     return layers
 
 def calculate_best_voicing(chord_sequence, initial_voicing, dna_db, key_info, target_melody=None):
-    dp = [{(chord_sequence[0], v_to_tuple(initial_voicing)): (0, None)}]
+    # 🌟 1. 废弃原先锁死单一 initial_voicing 的逻辑
+    first_chord = chord_sequence[0]
+    first_tgt = target_melody[0] if target_melody and len(target_melody) > 0 else None
+    
+    # 🌟 2. 重新生成第一个和弦的所有可能排列，彻底打开平行宇宙！
+    first_cands = get_chord_candidates(first_chord, dna_db, first_tgt)
+    if not first_cands: return None
+    
+    # 🌟 3. 引入初始基准分：防止开放起点后，引擎为了省 1 分而在八度间乱窜
+    shift = key_info.get("shift", 0)
+    v_shift = shift if shift <= 3 else shift - 12
+    ideal_S, ideal_A, ideal_T, ideal_B = 72 + v_shift, 65 + v_shift, 60 + v_shift, 48 + v_shift
+    score_initial = lambda v: abs(v['S']-ideal_S)*1.5 + abs(v['A']-ideal_A) + abs(v['T']-ideal_T) + abs(v['B']-ideal_B)
+    
+    dp = [{}]
+    for v in first_cands:
+        init_score = score_initial(v)
+        dp[0][(first_chord, v_to_tuple(v))] = (init_score, None)
     
     for i in range(1, len(chord_sequence)):
         current_chord = chord_sequence[i]
-        last_chord = chord_sequence[i-1]
+        prev_chord = chord_sequence[i-1]
         next_layer = {}
         target_s = target_melody[i] if target_melody and i < len(target_melody) else None
         candidates = get_chord_candidates(current_chord, dna_db, target_s)

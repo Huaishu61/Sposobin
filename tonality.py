@@ -45,7 +45,8 @@ def transpose_dna(base_dna, shift):
             "next": rules["next"],
             "bass_options": [b + shift for b in rules["bass_options"]],
             "required": {(pc + shift) % 12 for pc in rules["required"]},
-            "max_counts": {(pc + shift) % 12: count for pc, count in rules["max_counts"].items()}
+            # Use .get() here to safely handle missing max_counts
+            "max_counts": {(pc + shift) % 12: count for pc, count in rules.get("max_counts", {}).items()}
         }
     return transposed_db
 

@@ -121,12 +121,6 @@ watch(playheadX, async (newX) => {
 </script>
 
 <style scoped>
-@font-face {
-  font-family: 'Bravura';
-  src: url('../assets/Bravura.woff2') format('woff2');
-  font-weight: normal;
-  font-style: normal;
-}
 .bravura-text {
   font-family: 'Bravura', sans-serif;
   dominant-baseline: central;

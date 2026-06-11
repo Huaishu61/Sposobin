@@ -7,7 +7,7 @@ MAJOR_DNA = {
     "T不完全": {"next": ["S", "D", "T₆", "S₆", "VI", "D₅₆", "D₃₄", "D₂", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "DTᵢᵢᵢ", "DTᵢᵢᵢ₇", "s", "s₆", "♭VI"], "bass_options": [48, 36], "required": {0, 4}, "max_counts": {4: 1}},
     "T双三": {"next": ["S", "D", "T₆", "D₇", "D₇不完全", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "sᵢᵢ₇", "sᵢᵢ₅₆"], "bass_options": [48, 36], "required": {0, 4, 7}, "max_counts": {0: 1, 7: 1}},
     "T₆": {"next": ["S", "D", "S₆", "D₆", "D₅₆", "D₃₄", "D₂", "Sᵢᵢ", "Sᵢᵢ₆", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "Sᵢᵢ₃₄", "Sᵢᵢ₂", "Dᵥᵢᵢ₇", "Dᵥᵢᵢ₅₆", "Dᵥᵢᵢ₃₄", "Dᵥᵢᵢ₂", "DTᵢᵢᵢ", "Dᵥᵢᵢ₆", "VI₇", "S₇", "DD", "DD₆", "DD₇", "DD₅₆", "D₆₄", "D₇/II", "Dᵥᵢᵢ₇/II", "D₇/IV", "Dᵥᵢᵢ₇/IV", "D₇/VI", "Dᵥᵢᵢ₇/VI", "D₇/III", "Dᵥᵢᵢ₇/III", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶", "s", "s₆", "♭VI", "sᵢᵢ", "sᵢᵢ₆", "sᵢᵢ₇", "sᵢᵢ₅₆", "Dᵥᵢᵢ₇♭", "Dᵥᵢᵢ₅₆♭", "D₉♭",
-                    "s/II", "s₆/II", "sᵢᵢ₆/II", "sᵢᵢ₅₆/II", "sᵢᵢ₆/III", "sᵢᵢ₅₆/III", "s/IV", "s₆/IV", "sᵢᵢ₆/IV"], "bass_options": [40, 52], "required": {0, 4, 7}, "max_counts": {4: 1}},
+                    "s/II", "s₆/II", "sᵢᵢ₆/II", "sᵢᵢ₅₆/II", "sᵢᵢ₆/III", "sᵢᵢ₅₆/III", "s/IV", "s₆/IV", "sᵢᵢ₆/IV"], "bass_options": [40, 52], "required": {0, 4, 7}},
     "T₆₄": {"next": ["S", "S₆", "s", "s₆", "D", "D₆", "D₇", "D₇不完全"], "bass_options": [43, 55], "required": {0, 4, 7}, "max_counts": {0: 1, 4: 1}},
 
     # 🌟 2. 注入大调体系下的所有主功能离调副下属变和弦配置 🌟
@@ -98,7 +98,7 @@ MAJOR_DNA = {
     "S": {"next": ["D", "T", "T₆", "S₆", "D₆", "K₆₄", "Sᵢᵢ", "Sᵢᵢ₆", "D₇", "D₇不完全", "D₅₆", "D₃₄", "D₂", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "Dᵥᵢᵢ₇", "Dᵥᵢᵢ₅₆", "Dᵥᵢᵢ₃₄", "Dᵥᵢᵢ₂", "Dᵥᵢᵢ₆", "D⁶", "S₇", "VI₇", "DD", "DD₆", "DD₇", "DD₅₆", "DDᵥᵢᵢ₇", "T₆₄", "D₇/VI", "Dᵥᵢᵢ₇/VI", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶"], "bass_options": [41, 53], "required": {5, 9, 0}, "max_counts": {9: 1}},  
     "S₆": {"next": ["S", "D", "D₆", "D₇", "D₇不完全", "T", "K₆₄", "D₅₆", "D₃₄", "D₂", "Dᵥᵢᵢ₇", "Dᵥᵢᵢ₅₆", "Dᵥᵢᵢ₃₄", "Dᵥᵢᵢ₂", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "Sᵢᵢ₃₄", "D⁶", "S₇", "DD", "DD₆", "DD₇", "DD₅₆", "T₆₄", "D₇/VI", "Dᵥᵢᵢ₇/VI", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶"], "bass_options": [45, 57], "required": {5, 9, 0}, "max_counts": {9: 1}},
     "S₆₄": {"next": ["T"], "bass_options": [48, 36], "required": {5, 9, 0}, "max_counts": {5: 1, 9: 1}},
-    "Sᵢᵢ": {"next": ["D", "K₆₄", "D₇", "D₇不完全", "D₅₆", "D₃₄", "Sᵢᵢ₇"], "bass_options": [50, 38], "required": {2, 5, 9}, "max_counts": {9: 1}},  
+    "Sᵢᵢ": {"next": ["D", "K₆₄", "D₇", "D₇不完全", "D₅₆", "D₃₄", "Sᵢᵢ₇", "T₆"], "bass_options": [50, 38], "required": {2, 5, 9}, "max_counts": {9: 1}},
     "Sᵢᵢ₆": {"next": ["D", "D₇", "D₇不完全", "K₆₄", "D₅₆", "D₃₄", "D₂", "Sᵢᵢ₇", "Sᵢᵢ₅₆", "Sᵢᵢ₃₄", "D⁶", "DD", "DD₆", "DD₇", "DD₅₆", "DDᵥᵢᵢ₇", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶", "T₆"], "bass_options": [41, 53], "required": {2, 5, 9}, "max_counts": {2: 1, 9: 1}},  
     "Sᵢᵢ₇":  {"next": ["D", "D₇", "D₇不完全", "K₆₄"], "bass_options": [50, 38], "required": {2, 5, 9, 0}, "max_counts": {2:1, 5:1, 9:1, 0:1}}, 
     "Sᵢᵢ₅₆": {"next": ["D", "D₇", "D₇不完全", "K₆₄"], "bass_options": [41, 53], "required": {2, 5, 9, 0}, "max_counts": {2:1, 5:1, 9:1, 0:1}}, 
@@ -148,7 +148,7 @@ MINOR_DNA = {
                    "s/iv", "s₆/iv", "sᵢᵢ₆/iv", "sᵢᵢ₅₆/iv", "sᵢᵢ₆/III", "sᵢᵢ₅₆/III", "s/VI", "s₆/VI", "sᵢᵢ₆/VI", "s/VII", "s₆/VII", "sᵢᵢ₆/VII"], "bass_options": [48, 36], "required": {0, 3, 7}, "max_counts": {3: 1}},  
     "t不完全": {"next": ["s", "D", "t₆", "s₆", "VI", "D₅₆", "D₃₄", "D₂"], "bass_options": [48, 36], "required": {0, 3}, "max_counts": {3: 1}},
     "t₆": {"next": ["s", "S", "D", "t", "S₆", "s₆", "VI", "♭VI", "D₅₆", "D₃₄", "D₂", "Dᵥᵢᵢ₇", "Dᵥᵢᵢ₅₆", "Dᵥᵢᵢ₃₄", "Dᵥᵢᵢ₂", "sᵢᵢ", "sᵢᵢ₆", "sᵢᵢ₇", "sᵢᵢ₅₆", "sᵢᵢ₃₄", "sᵢᵢ₂", "Dᵥᵢᵢ₆", "VI₇", "s₇", "DD", "DD₆", "DD₇", "DD₅₆", "D₆₄", "D₇/iv", "Dᵥᵢᵢ₇/iv", "D₇/VI", "Dᵥᵢᵢ₇/VI", "D₇/III", "Dᵥᵢᵢ₇/III", "D₇/VII", "Dᵥᵢᵢ₇/VII", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶", "Sᵢᵢ", "Sᵢᵢ₆", "Sᵢᵢ₇", "DD♮⁵", "DD₇♮⁵", "VII", "DTᵢᵢᵢ",
-                    "s/iv", "s₆/iv", "sᵢᵢ₆/iv", "sᵢᵢ₅₆/iv", "sᵢᵢ₆/III", "sᵢᵢ₅₆/III", "s/VI", "s₆/VI", "sᵢᵢ₆/VI", "s/VII", "s₆/VII", "sᵢᵢ₆/VII"], "bass_options": [39, 51], "required": {0, 3, 7}, "max_counts": {3: 1}},
+                    "s/iv", "s₆/iv", "sᵢᵢ₆/iv", "sᵢᵢ₅₆/iv", "sᵢᵢ₆/III", "sᵢᵢ₅₆/III", "s/VI", "s₆/VI", "sᵢᵢ₆/VI", "s/VII", "s₆/VII", "sᵢᵢ₆/VII"], "bass_options": [39, 51], "required": {0, 3, 7}},
     "t₆₄": {"next": ["s", "s₆", "D", "D₆", "D₇", "D₇不完全"], "bass_options": [43, 55], "required": {0, 3, 7}, "max_counts": {0: 1, 3: 1}},
 
     # 🌟 4. 注入小调体系下的所有主功能离调副下属变和弦配置 🌟
@@ -226,7 +226,7 @@ MINOR_DNA = {
     "s₆": {"next": ["s", "D", "D₆", "D₇", "D₇不完全", "t", "K₆₄", "D₅₆", "D₃₄", "D₂", "Dᵥᵢᵢ₇", "Dᵥᵢᵢ₅₆", "Dᵥᵢᵢ₃₄", "Dᵥᵢᵢ₂", "sᵢᵢ₇", "sᵢᵢ₅₆", "sᵢᵢ₃₄", "D⁶", "s₇", "DD", "DD₆", "DD₇", "DD₅₆", "DDᵥᵢᵢ₇", "t₆₄", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶", "VII", "D₇/III", "Dᵥᵢᵢ₇/III", "D₇/VII", "Dᵥᵢᵢ₇/VII", "D₇/iv", "Dᵥᵢᵢ₇/iv"], "bass_options": [44, 56], "required": {5, 8, 0}, "max_counts": {8: 1}},
     "s₆₄": {"next": ["t"], "bass_options": [48, 36], "required": {5, 8, 0}, "max_counts": {5: 1, 8: 1}},
     
-    "sᵢᵢ": {"next": ["D", "K₆₄", "D₇", "D₇不完全", "D₅₆", "D₃₄"], "bass_options": [50, 38], "required": {2, 5, 8}, "max_counts": {8: 1}},
+    "sᵢᵢ": {"next": ["D", "K₆₄", "D₇", "D₇不完全", "D₅₆", "D₃₄", "t₆"], "bass_options": [50, 38], "required": {2, 5, 8}, "max_counts": {8: 1}},
     "sᵢᵢ₆": {"next": ["D", "D₇", "D₇不完全", "K₆₄", "D₅₆", "D₃₄", "D₂", "sᵢᵢ₇", "sᵢᵢ₅₆", "sᵢᵢ₃₄", "D⁶", "DD", "DD₆", "DD₇", "DD₅₆", "DDᵥᵢᵢ₇", "N₆", "It⁺⁶", "Ger⁺⁶", "Fr⁺⁶", "t₆"], "bass_options": [41, 53], "required": {2, 5, 8}, "max_counts": {2: 1, 8: 1}},  
     "sᵢᵢ₇":  {"next": ["D", "D₇", "D₇不完全", "K₆₄"], "bass_options": [50, 38], "required": {2, 5, 8, 0}, "max_counts": {2:1, 5:1, 8:1, 0:1}}, 
     "sᵢᵢ₅₆": {"next": ["D", "D₇", "D₇不完全", "K₆₄"], "bass_options": [41, 53], "required": {2, 5, 8, 0}, "max_counts": {2:1, 5:1, 8:1, 0:1}}, 

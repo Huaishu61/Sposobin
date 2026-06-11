@@ -1,5 +1,9 @@
 # app.py
 import secrets
+import mimetypes
+# 强制注册 WOFF2 字体类型，防止 Safari 拦截
+mimetypes.add_type('font/woff2', '.woff2')
+mimetypes.add_type('application/font-woff2', '.woff2')
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -361,21 +365,42 @@ def sync_state(req: EngineRequest):
 
         elif req.mode == "COMPOSE" and req.pending_note is not None:
             tgt_s = req.pending_note
-            valid_states = []
-            for tc in target_variants:
-                if not req.history:
+            target_variants = CHORD_FAMILIES.get(req.action_chord, [req.action_chord])
+            
+            if not req.history:
+                valid_states = []
+                for tc in target_variants:
                     for v in get_chord_candidates(tc, active_dna_db, tgt_s): 
                         valid_states.append((tc, v_to_tuple(v)))
-                else:
-                    last_c, last_v = req.history[-1]["chord"], req.history[-1]["voices"]
-                    for nxt_v in get_chord_candidates(tc, active_dna_db, tgt_s):
-                        if evaluate_voicing(last_v, nxt_v, last_c, tc, key_info) < 999999: 
-                            valid_states.append((tc, v_to_tuple(nxt_v)))
-            if valid_states:
-                best_state = min(valid_states, key=lambda s: score_initial(tuple_to_v(s[1])))
-                req.history.append({"chord": best_state[0], "voices": tuple_to_v(best_state[1])})
-                req.target_melody.append(tgt_s)
-                req.pending_note = None
+                if valid_states:
+                    best_state = min(valid_states, key=lambda s: score_initial(tuple_to_v(s[1])))
+                    req.history.append({"chord": best_state[0], "voices": tuple_to_v(best_state[1])})
+                    req.target_melody.append(tgt_s)
+                    req.pending_note = None
+            else:
+                # 🌟 修复：引入和 FREE 模式一样的 DP 全局回溯重排机制！
+                best_overall_path = None
+                best_cost = 999999
+                for tc in target_variants:
+                    chord_sequence = [item["chord"] for item in req.history] + [tc]
+                    temp_melody = req.target_melody + [tgt_s]  # 旋律也要带上这一步的新音
+                    
+                    global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, temp_melody)
+                    
+                    if global_path: 
+                        last_c = req.history[-1]["chord"]
+                        last_v_optimized = global_path[-2]  # 提取优化后的上一步排列
+                        curr_v = global_path[-1]
+                        cost = evaluate_voicing(last_v_optimized, curr_v, last_c, tc, key_info)
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_overall_path = (tc, global_path)
+                if best_overall_path:
+                    tc, global_path = best_overall_path
+                    chord_sequence = [item["chord"] for item in req.history] + [tc]
+                    req.history = [{"chord": c, "voices": v} for c, v in zip(chord_sequence, global_path)]
+                    req.target_melody.append(tgt_s)
+                    req.pending_note = None
 
         elif req.mode == "FREE":
             if not req.history:
@@ -482,7 +507,7 @@ def sync_state(req: EngineRequest):
         
         if req.mode == "COMPOSE":
             if req.pending_note is not None:
-                last_c, last_v = last_item["chord"], last_item["voices"]
+                last_c = last_item["chord"]
                 possible_nexts = set()
                 for nxt in active_dna_db.get(last_c, {}).get("next", []):
                     possible_nexts.add(nxt)
@@ -491,9 +516,14 @@ def sync_state(req: EngineRequest):
                 
                 for nxt_c in possible_nexts:
                     if nxt_c in active_dna_db:
-                        for nxt_v in get_chord_candidates(nxt_c, active_dna_db, req.pending_note):
-                            if evaluate_voicing(last_v, nxt_v, last_c, nxt_c, key_info) < 999999:
-                                next_chords.append(nxt_c); break
+                        # 🌟 修复：使用 DP 进行探路预测！
+                        # 假设我们走这一步，构造一条临时路径和临时旋律
+                        temp_seq = [item["chord"] for item in req.history] + [nxt_c]
+                        temp_mel = req.target_melody + [req.pending_note]
+                        
+                        # 让 DP 去算一下，如果我选这个和弦，前面能不能调整得通？
+                        if calculate_best_voicing(temp_seq, req.history[0]["voices"], active_dna_db, key_info, temp_mel):
+                            next_chords.append(nxt_c)
                                 
         elif req.mode == "FREE":
             last_c, last_v = last_item["chord"], last_item["voices"]
