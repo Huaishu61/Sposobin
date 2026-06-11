@@ -78,12 +78,13 @@
           
           <g v-for="note in node.notes" :key="note.v">
             <text :x="note.x" :y="note.y" class="bravura-text" font-size="48" dy="0" :fill="getNodeColor(node.type)">
-              {{ node.type === 'target' ? '𝄽' : '&#xE0A4;' }}
+              &#xE0A4;
             </text>
-            <line v-if="node.type !== 'target'"
-                  :x1="note.x + (note.v === 'S' || note.v === 'T' ? 6.5 : -6.5)" :y1="note.y" 
+
+            <line :x1="note.x + (note.v === 'S' || note.v === 'T' ? 6.5 : -6.5)" :y1="note.y" 
                   :x2="note.x + (note.v === 'S' || note.v === 'T' ? 6.5 : -6.5)" :y2="note.v === 'S' || note.v === 'T' ? note.y - 26 : note.y + 26" 
                   :stroke="getNodeColor(node.type)" stroke-width="1.6" />
+
             <text v-if="note.acc" :x="note.acc_x" :y="note.y" class="bravura-text" font-size="32" dy="1" fill="#0F172A">
               {{ getSMuFLChar(note.acc) }}
             </text>
