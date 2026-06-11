@@ -115,16 +115,116 @@ body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg-c
 .btn-group { display: flex; gap: 12px; }
 .hint-text { font-size: 13px; color: var(--text-muted); background: #F8FAFC; padding: 6px 12px; border-radius: 99px; }
 
-.panels-grid { display: flex; gap: 24px; }
-.modern-panel { flex: 1; background: #F8FAFC; border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--border); }
-.panel-header { margin: 0 0 20px 0; font-size: 16px; font-weight: 600; color: var(--primary); }
-.category-row { margin-bottom: 20px; }
-.cat-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 10px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; text-transform: uppercase;}
-.chord-btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
-.modern-chord-btn { background: white; border: 1px solid #BAE6FD; color: #0284C7; padding: 8px 16px; border-radius: 8px; font-family: Georgia, serif; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: var(--shadow-sm); }
-.modern-chord-btn:hover { background: #F0F9FF; transform: translateY(-2px); box-shadow: 0 4px 6px rgba(14, 165, 233, 0.1); border-color: #7DD3FC;}
-.tonic-btn { border-color: #DDD6FE; color: #6D28D9; }
-.tonic-btn:hover { background: #F5F3FF; border-color: #C4B5FD; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.1); }
+/* 🌟 已修复：将原先错误的 HTML 注释安全转换为标准 CSS 注释 */
+/* 被移至当前选择器的CSS则清除掉，变为全局作用域重构版本 */
+
+/* ==========================================================================
+   🌟 和弦选择器按钮重构（现代化英文字体 + 大小写极端辨识）
+   ========================================================================== */
+.modern-chord-btn {
+  background: white;
+  border: 1px solid #BAE6FD;
+  color: #0284C7;
+  padding: 6px 12px;
+  border-radius: 6px;
+  /* ⚡ 切换为极具现代感的无衬线 Inter 字体，字符间距微调 */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 36px;
+  box-sizing: border-box;
+}
+
+/* 增强大小写视觉高差，让 S 和 s 一眼即辨 */
+.chord-text-wrapper {
+  letter-spacing: -0.2px;
+}
+
+.modern-chord-btn:hover {
+  background: #F0F9FF;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(14, 165, 233, 0.12);
+  border-color: #7DD3FC;
+}
+
+/* 右侧变音 / 离调体系按钮外观调优 */
+.chromatic-btn {
+  border-color: #DDD6FE;
+  color: #6D28D9;
+}
+.chromatic-btn:hover {
+  background: #F5F3FF;
+  border-color: #C4B5FD;
+  box-shadow: 0 4px 8px rgba(139, 92, 246, 0.12);
+}
+
+.panels-grid {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.modern-panel {
+  flex: 1;
+  background: #F8FAFC;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.panel-header {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.category-row {
+  margin-bottom: 14px;
+}
+
+.category-row:last-child {
+  margin-bottom: 0;
+}
+
+.cat-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 4px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   📱 移动端极端响应式：双翼布局自动降级为"上自然、下变音"
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  .panels-grid {
+    flex-direction: column; /* 竖屏时自动变成上下排列，完全符合大拇指下滑操作 */
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .modern-panel {
+    width: 100% !important;
+    padding: 12px;
+  }
+  
+  .modern-chord-btn {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+}
 
 .terminal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 999; }
 .terminal-window { width: 700px; max-width: 90vw; background: #1E1E1E; border-radius: 10px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); overflow: hidden; border: 1px solid #333; }

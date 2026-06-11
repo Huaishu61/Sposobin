@@ -534,36 +534,53 @@ def sync_state(req: EngineRequest):
     if is_dead_end:
         debug_msg = "⚠️ 死胡同警告：当前的声部排列导致前方无路可走！\n\n【诊断信息】\n引擎已经穷尽了所有合法的和声连接，但在严格遵守声部进行法则的前提下，无法找到下一步的合法排列。\n\n👉 建议：直接点击乐谱上历史节点进行【状态回退】！"
 
+    # 重新定义符合传统和声学逻辑的分类桶
     diatonic = {
         "主功能组 (T / t / DT)": [], 
         "下属功能组 (S / s / VI)": [], 
-        "变和弦组 (N / +6)": [], 
         "属功能组 (D / K / VII)": [], 
-        "导功能组 (Dᵥᵢᵢ)": [], 
-        "重属功能组 (DD)": [],
-        "特殊变音与扩展和弦 (Others)": []
+        "普通扩展和弦 (Others)": []
     }
-    tonicization = {}
+    chromatic = {
+        "重属功能组 (DD)": [],
+        "导功能组 (Dᵥᵢᵢ)": [], 
+        "重属变和弦组 (N / +6)": []
+    }
     
     for chord in next_chords:
+        # 1. 处理带有斜杠的副属 / 副下属离调和弦
         if "/" in chord and not chord.startswith(("It", "Ger", "Fr")):
             target_deg = chord.split('/')[1]
             if chord.startswith(("D", "Dᵥᵢᵢ")):
                 cat = f"副属和弦 (至 {target_deg} 级)"
-                if cat not in tonicization: tonicization[cat] = []
-                tonicization[cat].append(chord)
             elif chord.startswith(("S", "s", "Sᵢᵢ", "sᵢᵢ")):
                 cat = f"副下属和弦 (至 {target_deg} 级)"
-                if cat not in tonicization: tonicization[cat] = []
-                tonicization[cat].append(chord)
+                
+            if cat not in chromatic: 
+                chromatic[cat] = []
+            chromatic[cat].append(chord)
+            
+        # 2. 处理正统半音变音和弦与重属功能
         else:
-            if chord.startswith(("N", "It", "Ger", "Fr")): diatonic["变和弦组 (N / +6)"].append(chord)
-            elif chord.startswith("DD"): diatonic["重属功能组 (DD)"].append(chord)
-            elif chord.startswith("Dᵥᵢᵢ"): diatonic["导功能组 (Dᵥᵢᵢ)"] .append(chord)
-            elif chord.startswith(("T", "t", "DT")): diatonic["主功能组 (T / t / DT)"].append(chord)
-            elif chord.startswith(("S", "s", "VI", "♭VI", "sᵢᵢ", "Sᵢᵢ")): diatonic["下属功能组 (S / s / VI)"].append(chord)
-            elif chord.startswith(("D", "K", "VII", "♭VII")): diatonic["属功能组 (D / K / VII)"].append(chord)
-            else: diatonic["特殊变音与扩展和弦 (Others)"].append(chord)
+            if chord.startswith(("N", "It", "Ger", "Fr")): 
+                chromatic["重属变和弦组 (N / +6)"].append(chord)
+            elif chord.startswith("DD"): 
+                chromatic["重属功能组 (DD)"].append(chord)
+            elif chord.startswith("Dᵥᵢᵢ"): 
+                chromatic["导功能组 (Dᵥᵢᵢ)"].append(chord)
+            # 3. 真正的自然音级和弦
+            elif chord.startswith(("T", "t", "DT")): 
+                diatonic["主功能组 (T / t / DT)"].append(chord)
+            elif chord.startswith(("S", "s", "VI", "♭VI", "sᵢᵢ", "Sᵢᵢ")): 
+                diatonic["下属功能组 (S / s / VI)"].append(chord)
+            elif chord.startswith(("D", "K", "VII", "♭VII")): 
+                diatonic["属功能组 (D / K / VII)"].append(chord)
+            else: 
+                diatonic["普通扩展和弦 (Others)"].append(chord)
+
+    # 剔除空分类，保持面板绝对干净
+    diatonic = {k: v for k, v in diatonic.items() if v}
+    chromatic = {k: v for k, v in chromatic.items() if v}
 
     return {
         "mode": req.mode,
@@ -572,7 +589,7 @@ def sync_state(req: EngineRequest):
         "target_melody": req.target_melody,
         "pending_note": req.pending_note, 
         "renderData": get_render_data(req.history, key_info, req.target_melody, req.pending_note),
-        "categories": {"diatonic": {k: v for k, v in diatonic.items() if v}, "tonicization": tonicization},
+        "categories": {"diatonic": diatonic, "chromatic": chromatic},
         "debug_message": debug_msg,
         "is_completed": is_completed 
     }

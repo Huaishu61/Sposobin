@@ -10,18 +10,22 @@
         <h3 class="panel-header">自然音阶系统 (Diatonic)</h3>
         <div v-for="(chords, title) in categories.diatonic" :key="title" class="category-row">
           <div class="cat-title">{{ title }}</div>
-          <div class="chord-btn-group">
-            <button v-for="c in chords" :key="c" @click="$emit('chord-select', c)" class="modern-chord-btn">{{ c }}</button>
+          <div class="chord-grid-layout">
+            <button v-for="c in chords" :key="c" @click="$emit('chord-select', c)" class="modern-chord-btn">
+              <span class="chord-text-wrapper">{{ c }}</span>
+            </button>
           </div>
         </div>
       </div>
       
       <div class="right-panel modern-panel" v-if="hasChromatic">
-        <h3 class="panel-header" style="color: #8B5CF6;">离调与半音体系 (Chromatic)</h3>
-        <div v-for="(chords, title) in categories.tonicization" :key="title" class="category-row">
+        <h3 class="panel-header" style="color: #8B5CF6;">离调与变音体系 (Chromatic)</h3>
+        <div v-for="(chords, title) in categories.chromatic" :key="title" class="category-row">
           <div class="cat-title">{{ title }}</div>
-          <div class="chord-btn-group">
-            <button v-for="c in chords" :key="c" @click="$emit('chord-select', c)" class="modern-chord-btn tonic-btn">{{ c }}</button>
+          <div class="chord-grid-layout">
+            <button v-for="c in chords" :key="c" @click="$emit('chord-select', c)" class="modern-chord-btn chromatic-btn">
+              <span class="chord-text-wrapper">{{ c }}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -38,7 +42,8 @@ const props = defineProps({
 defineEmits(['chord-select']);
 
 const hasDiatonic = computed(() => Object.keys(props.categories.diatonic || {}).length > 0);
-const hasChromatic = computed(() => Object.keys(props.categories.tonicization || {}).length > 0);
+// 支持动态识别新的后端键名
+const hasChromatic = computed(() => Object.keys(props.categories.chromatic || props.categories.tonicization || {}).length > 0);
 const isEmpty = computed(() => !hasDiatonic.value && !hasChromatic.value);
 
 function getPromptText() {
@@ -47,3 +52,20 @@ function getPromptText() {
   return '引擎正在进行通路剪枝校验...';
 }
 </script>
+
+<style scoped>
+/* 局部紧凑网格流动布局，杜绝高低不平 */
+.chord-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+
+@media screen and (max-width: 768px) {
+  .chord-grid-layout {
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+    gap: 5px;
+  }
+}
+</style>
