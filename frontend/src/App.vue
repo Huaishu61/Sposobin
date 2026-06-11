@@ -70,10 +70,20 @@
               <label for="mode-compose">旋律写作模式</label>
             </div>
           </div>
+          
           <div class="form-group">
             <label class="form-label">全局调性 (Key)</label>
-            <select v-model="store.key_name" @change="resetState" class="modern-select" :disabled="store.mode !== 'FREE'">
+            <select v-model="store.key_name" @change="resetState" class="modern-select">
               <option v-for="key in keys" :key="key" :value="key">{{ key }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">全局拍号 (Meter)</label>
+            <select v-model="store.time_signature" @change="resetState" class="modern-select">
+              <option value="4/4">4/4 拍 </option>
+              <option value="3/4">3/4 拍 </option>
+              <option value="2/4">2/4 拍 </option>
             </select>
           </div>
         </section>
@@ -109,7 +119,7 @@
             :history-length="store.history.length"
             :target-melody-length="store.target_melody.length"
             :playback-index="store.playbackIndex"
-            @rewind="rewindTo"
+            :time-signature="store.time_signature" @rewind="rewindTo"
           />
         </section>
 
@@ -304,6 +314,7 @@ const keys = [
 const store = reactive({
   mode: "FREE",
   key_name: "C 大调 (C Major)",
+  time_signature: "4/4", // 🌟 新增：全局初始化拍号，默认设置为 4/4 拍
   target_melody: [],
   history: [],
   pending_note: null,
@@ -396,6 +407,7 @@ async function syncBackend(action_chord = null) {
       body: JSON.stringify({
         mode: store.mode,
         key_name: store.key_name,
+        time_signature: store.time_signature, // 🌟 新增：让 Python 后端也能感知到当前小节拍号
         target_melody: store.target_melody,
         history: store.history,
         pending_note: store.pending_note,
@@ -521,6 +533,7 @@ async function exportMusicXML() {
       body: JSON.stringify({
         mode: store.mode,
         key_name: store.key_name,
+        time_signature: store.time_signature, // 🌟 新增：使导出的 XML 乐谱小节线拍号不写死为 4/4
         target_melody: store.target_melody,
         history: store.history,
         pending_note: store.pending_note
