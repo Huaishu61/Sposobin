@@ -208,6 +208,22 @@ class EngineRequest(BaseModel):
     action_chord: Optional[str] = None
 
 
+# ==========================================
+# 🌟 新增：和弦家族自动映射表 (语义 -> 物理)
+# ==========================================
+CHORD_FAMILIES = {
+    "T": ["T", "T不完全", "T双三"],
+    "t": ["t", "t不完全"],
+    "D₇": ["D₇", "D₇不完全"]
+}
+
+def get_base_chord(chord_name):
+    """将底层的变体和弦（如 T不完全）折叠回显示用的基础和弦（如 T）"""
+    for base, variants in CHORD_FAMILIES.items():
+        if chord_name in variants:
+            return base
+    return chord_name
+
 # 全局 DAG 缓存池
 GLOBAL_DAG_CACHE = {}
 
@@ -221,15 +237,11 @@ def get_cached_dag(key_name, target_melody, active_dna_db, key_info):
     return dag
 
 def format_chord_name(name):
-    clean_name = name.replace("♮⁵", "").replace("♭⁵", "")
+    # 彻底抹除底层结构后缀，让五线谱上的和弦标记保持纯粹的学术审美
+    clean_name = name.replace("♮⁵", "").replace("♭⁵", "").replace("不完全", "").replace("双三", "")
     base_name = clean_name.split('/')[0] if '/' in clean_name else clean_name
     suffix = "/" + clean_name.split('/')[1] if '/' in clean_name else ""
     core = base_name
-    if "不完全" in base_name: 
-        core_str = base_name.replace("不完全", "").replace("₇", "").replace("₉", "")
-        core = core_str + "ᵢₙᶜ"
-    elif "双三" in base_name: 
-        core = "Tᵈᵘᵃˡ"
     if "♭⁵" in name or ("♭" in base_name and "VI" not in base_name): 
         core += "♭5" if "♭⁵" in name else "♭"
     elif "♮⁵" in name: 
@@ -323,7 +335,10 @@ def sync_state(req: EngineRequest):
     debug_msg = None 
 
     if req.action_chord:
-        target_chord = req.action_chord
+        # 🌟 自动将用户传入的 "T" 展开为 ["T", "T不完全", "T双三"]
+        target_chord_base = req.action_chord
+        target_variants = CHORD_FAMILIES.get(target_chord_base, [target_chord_base])
+        
         shift = key_info["shift"]
         v_shift = shift if shift <= 3 else shift - 12
         ideal_S, ideal_A, ideal_T, ideal_B = 72 + v_shift, 65 + v_shift, 60 + v_shift, 48 + v_shift
@@ -333,11 +348,16 @@ def sync_state(req: EngineRequest):
             dag_layers = get_cached_dag(req.key_name, req.target_melody, active_dna_db, key_info)
             if dag_layers:
                 step = len(req.history)
-                if step == 0: valid_states = [s for s in dag_layers[0].keys() if s[0] == target_chord]
-                else:
-                    last_h = req.history[-1]
-                    state_data = dag_layers[step-1].get((last_h['chord'], v_to_tuple(last_h['voices'])))
-                    valid_states = [s for s in state_data['next'] if s[0] == target_chord] if state_data else []
+                valid_states = []
+                # 遍历所有物理变体，从 DAG 图中收集所有合法的连接可能
+                for tc in target_variants:
+                    if step == 0: 
+                        valid_states.extend([s for s in dag_layers[0].keys() if s[0] == tc])
+                    else:
+                        last_h = req.history[-1]
+                        state_data = dag_layers[step-1].get((last_h['chord'], v_to_tuple(last_h['voices'])))
+                        if state_data:
+                            valid_states.extend([s for s in state_data['next'] if s[0] == tc])
                 if valid_states:
                     best_state = min(valid_states, key=lambda s: score_initial(tuple_to_v(s[1])))
                     req.history.append({"chord": best_state[0], "voices": tuple_to_v(best_state[1])})
@@ -345,14 +365,15 @@ def sync_state(req: EngineRequest):
         elif req.mode == "COMPOSE" and req.pending_note is not None:
             tgt_s = req.pending_note
             valid_states = []
-            if not req.history:
-                for v in get_chord_candidates(target_chord, active_dna_db, tgt_s): 
-                    valid_states.append((target_chord, v_to_tuple(v)))
-            else:
-                last_c, last_v = req.history[-1]["chord"], req.history[-1]["voices"]
-                for nxt_v in get_chord_candidates(target_chord, active_dna_db, tgt_s):
-                    if evaluate_voicing(last_v, nxt_v, last_c, target_chord, key_info) < 999999: 
-                        valid_states.append((target_chord, v_to_tuple(nxt_v)))
+            for tc in target_variants:
+                if not req.history:
+                    for v in get_chord_candidates(tc, active_dna_db, tgt_s): 
+                        valid_states.append((tc, v_to_tuple(v)))
+                else:
+                    last_c, last_v = req.history[-1]["chord"], req.history[-1]["voices"]
+                    for nxt_v in get_chord_candidates(tc, active_dna_db, tgt_s):
+                        if evaluate_voicing(last_v, nxt_v, last_c, tc, key_info) < 999999: 
+                            valid_states.append((tc, v_to_tuple(nxt_v)))
             if valid_states:
                 best_state = min(valid_states, key=lambda s: score_initial(tuple_to_v(s[1])))
                 req.history.append({"chord": best_state[0], "voices": tuple_to_v(best_state[1])})
@@ -361,14 +382,33 @@ def sync_state(req: EngineRequest):
 
         elif req.mode == "FREE":
             if not req.history:
-                cands = get_chord_candidates(target_chord, active_dna_db, None)
-                if cands:
-                    best_v = min(cands, key=score_initial)
-                    req.history.append({"chord": target_chord, "voices": best_v})
+                valid_states = []
+                for tc in target_variants:
+                    cands = get_chord_candidates(tc, active_dna_db, None)
+                    if cands:
+                        best_v = min(cands, key=score_initial)
+                        valid_states.append((tc, v_to_tuple(best_v)))
+                if valid_states:
+                    best_state = min(valid_states, key=lambda s: score_initial(tuple_to_v(s[1])))
+                    req.history.append({"chord": best_state[0], "voices": tuple_to_v(best_state[1])})
             else:
-                chord_sequence = [item["chord"] for item in req.history] + [target_chord]
-                global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, None)
-                if global_path: req.history = [{"chord": c, "voices": v} for c, v in zip(chord_sequence, global_path)]
+                best_overall_path = None
+                best_cost = 999999
+                # 针对每一种变体计算一次动态规划，寻找整体惩罚值最低的完美路线
+                for tc in target_variants:
+                    chord_sequence = [item["chord"] for item in req.history] + [tc]
+                    global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, None)
+                    if global_path: 
+                        last_c, last_v = req.history[-1]["chord"], req.history[-1]["voices"]
+                        curr_v = global_path[-1]
+                        cost = evaluate_voicing(last_v, curr_v, last_c, tc, key_info)
+                        if cost < best_cost:
+                            best_cost = cost
+                            best_overall_path = (tc, global_path)
+                if best_overall_path:
+                    tc, global_path = best_overall_path
+                    chord_sequence = [item["chord"] for item in req.history] + [tc]
+                    req.history = [{"chord": c, "voices": v} for c, v in zip(chord_sequence, global_path)]
 
     next_chords = []
     is_completed = False
@@ -477,6 +517,12 @@ def sync_state(req: EngineRequest):
                     for nxt_v in get_chord_candidates(nxt_c, active_dna_db, None):
                         if evaluate_voicing(last_v, nxt_v, last_c, nxt_c, key_info) < 999999:
                             next_chords.append(nxt_c); break
+
+    # 🌟 智能合并：将引擎深层推演出的变体名称，全数洗净折叠回大类！
+    folded_next_chords = set()
+    for chord in next_chords:
+        folded_next_chords.add(get_base_chord(chord))
+    next_chords = list(folded_next_chords)
 
     is_dead_end = False
     if len(req.history) > 0 and not is_completed and not debug_msg:
