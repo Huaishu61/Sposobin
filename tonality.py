@@ -41,11 +41,20 @@ def transpose_dna(base_dna, shift):
     if shift == 0: return base_dna
     transposed_db = {}
     for chord, rules in base_dna.items():
+
+        # 🌟 智能八度折叠：自动搜寻男低音合法音域 [36, 64] 内的所有对应八度
+        new_bass_options = set()
+        for b in rules["bass_options"]:
+            shifted_pc = (b + shift) % 12  # 计算平移后的绝对音级
+            # 遍历男低音发声范围，把所有符合该音级的八度都加进去
+            for oct_b in range(36, 65):
+                if oct_b % 12 == shifted_pc:
+                    new_bass_options.add(oct_b)
+
         transposed_db[chord] = {
             "next": rules["next"],
-            "bass_options": [b + shift for b in rules["bass_options"]],
+            "bass_options": list(new_bass_options),  # 应用修复后的低音候选
             "required": {(pc + shift) % 12 for pc in rules["required"]},
-            # Use .get() here to safely handle missing max_counts
             "max_counts": {(pc + shift) % 12: count for pc, count in rules.get("max_counts", {}).items()}
         }
     return transposed_db

@@ -43,13 +43,22 @@ def get_chord_siblings(chord_name, dna_db):
             
     return list(siblings)
 
-def get_chord_candidates(chord_name, dna_db, target_s=None):
+def get_chord_candidates(chord_name, dna_db, target_s=None, target_b=None):
     dna = dna_db[chord_name]
-    bass_candidates = dna["bass_options"]
     required_classes = dna["required"]
     max_counts = dna.get("max_counts", {})
     
     candidates = []
+    
+    # 🌟 新增：如果当前是低音题模式，强制筛选符合当前和弦低音要求的特定八度
+    if target_b is not None:
+        valid_bass_pcs = {b % 12 for b in dna["bass_options"]}
+        if (target_b % 12) not in valid_bass_pcs: 
+            return [] # 当前低音与和弦转位要求冲突，直接否决
+        bass_candidates = [target_b]
+    else:
+        bass_candidates = dna["bass_options"]
+
     for new_bass in bass_candidates:
         if target_s is not None:
             new_S = target_s
@@ -70,45 +79,52 @@ def get_chord_candidates(chord_name, dna_db, target_s=None):
                     if not fail_max_counts:
                         candidates.append({'S': new_S, 'A': new_A, 'T': new_T, 'B': new_bass})
         else:
-            for combo in itertools.combinations_with_replacement(AVAILABLE_NOTES, 3):
-                new_S, new_A, new_T = sorted(combo, reverse=True)
-                
-                if new_S < new_A or new_A < new_T or new_T < new_bass: continue
-                if (new_S - new_A) > 12 or (new_A - new_T) > 12: continue
-                    
-                all_pcs = [new_S % 12, new_A % 12, new_T % 12, new_bass % 12]
-                if set(all_pcs) != required_classes: continue
-                
-                fail_max_counts = False
-                for pc, max_allowed in max_counts.items():
-                    if all_pcs.count(pc) > max_allowed:
-                        fail_max_counts = True
-                        break
-                if fail_max_counts: continue
-                
-                candidates.append({'S': new_S, 'A': new_A, 'T': new_T, 'B': new_bass})
+            # 🚀 当目标为低音或自由模式时，从合法的物理距离内自由生成上方三声部
+            for new_S in AVAILABLE_NOTES:
+                if new_S <= new_bass: continue
+                for new_A in range(max(new_S - 12, new_bass), new_S + 1):
+                    for new_T in range(max(new_A - 12, new_bass), new_A + 1):
+                        all_pcs = [new_S % 12, new_A % 12, new_T % 12, new_bass % 12]
+                        if set(all_pcs) != required_classes: continue
+                        
+                        fail_max_counts = False
+                        for pc, max_allowed in max_counts.items():
+                            if all_pcs.count(pc) > max_allowed:
+                                fail_max_counts = True
+                                break
+                        if not fail_max_counts:
+                            candidates.append({'S': new_S, 'A': new_A, 'T': new_T, 'B': new_bass})
     return candidates
 
 def build_full_dag(target_melody, dna_db, key_info):
+    mode = key_info.get("app_mode")
     layers = []
     start_candidates = ["T", "T₆", "D", "D₆", "S", "S₆", "D₇", "t", "t₆", "s", "s₆"] 
     
     current_layer = {}
     for c in start_candidates:
         if c not in dna_db: continue
-        for v in get_chord_candidates(c, dna_db, target_melody[0]):
+        tgt_note = target_melody[0]
+        target_s = tgt_note if mode == "SOPRANO" else None
+        target_b = tgt_note if mode == "BASS" else None
+        for v in get_chord_candidates(c, dna_db, target_s=target_s, target_b=target_b):
             current_layer[(c, v_to_tuple(v))] = {'next': set(), 'prev': set()}
             
     if not current_layer:
         for c in dna_db.keys():
-            for v in get_chord_candidates(c, dna_db, target_melody[0]):
+            tgt_note = target_melody[0]
+            target_s = tgt_note if mode == "SOPRANO" else None
+            target_b = tgt_note if mode == "BASS" else None
+            for v in get_chord_candidates(c, dna_db, target_s=target_s, target_b=target_b):
                 current_layer[(c, v_to_tuple(v))] = {'next': set(), 'prev': set()}
                 
     layers.append(current_layer)
 
     for i in range(1, len(target_melody)):
         next_layer = {}
-        tgt_s = target_melody[i]
+        tgt_note = target_melody[i]
+        target_s = tgt_note if mode == "SOPRANO" else None
+        target_b = tgt_note if mode == "BASS" else None
 
         all_possible_next_chords = set()
         for (c_name, _), _ in layers[-1].items():
@@ -120,7 +136,7 @@ def build_full_dag(target_melody, dna_db, key_info):
         cand_cache = {}
         for nxt_c in all_possible_next_chords:
             if nxt_c in dna_db:
-                cand_cache[nxt_c] = get_chord_candidates(nxt_c, dna_db, tgt_s)
+                cand_cache[nxt_c] = get_chord_candidates(nxt_c, dna_db, target_s=target_s, target_b=target_b)
 
         for (c_name, v_tup), node_data in layers[-1].items():
             possible_nexts = set()
@@ -144,7 +160,7 @@ def build_full_dag(target_melody, dna_db, key_info):
             prev_layer = layers[-2]  
             fallback_cands = {}
             for nxt_c in dna_db:
-                fallback_cands[nxt_c] = get_chord_candidates(nxt_c, dna_db, tgt_s)
+                fallback_cands[nxt_c] = get_chord_candidates(nxt_c, dna_db, target_s=target_s, target_b=target_b)
             for (c_name, v_tup), node_data in prev_layer.items():
                 for nxt_c in dna_db:
                     if nxt_c not in dna_db: continue
@@ -186,12 +202,15 @@ def build_full_dag(target_melody, dna_db, key_info):
     return layers
 
 def calculate_best_voicing(chord_sequence, initial_voicing, dna_db, key_info, target_melody=None):
-    # 🌟 1. 废弃原先锁死单一 initial_voicing 的逻辑
+    mode = key_info.get("app_mode")
     first_chord = chord_sequence[0]
     first_tgt = target_melody[0] if target_melody and len(target_melody) > 0 else None
     
+    target_s = first_tgt if mode == "SOPRANO" else None
+    target_b = first_tgt if mode == "BASS" else None
+    
     # 🌟 2. 重新生成第一个和弦的所有可能排列，彻底打开平行宇宙！
-    first_cands = get_chord_candidates(first_chord, dna_db, first_tgt)
+    first_cands = get_chord_candidates(first_chord, dna_db, target_s=target_s, target_b=target_b)
     if not first_cands: return None
     
     # 🌟 3. 引入初始基准分：防止开放起点后，引擎为了省 1 分而在八度间乱窜
@@ -209,8 +228,12 @@ def calculate_best_voicing(chord_sequence, initial_voicing, dna_db, key_info, ta
         current_chord = chord_sequence[i]
         prev_chord = chord_sequence[i-1]
         next_layer = {}
-        target_s = target_melody[i] if target_melody and i < len(target_melody) else None
-        candidates = get_chord_candidates(current_chord, dna_db, target_s)
+        
+        tgt_note = target_melody[i] if target_melody and i < len(target_melody) else None
+        target_s = tgt_note if mode == "SOPRANO" else None
+        target_b = tgt_note if mode == "BASS" else None
+        
+        candidates = get_chord_candidates(current_chord, dna_db, target_s=target_s, target_b=target_b)
         
         for (prev_c, prev_v_tup), (prev_cost, _) in dp[-1].items():
             for curr_v in candidates:
@@ -221,6 +244,14 @@ def calculate_best_voicing(chord_sequence, initial_voicing, dna_db, key_info, ta
                     if curr_state not in next_layer or total_cost < next_layer[curr_state][0]:
                         next_layer[curr_state] = (total_cost, (prev_c, prev_v_tup))
         if not next_layer: return None
+        
+        # 🚀 提速点：Beam Search 精英保留机制，防止 DP 状态组合爆炸
+        BEAM_WIDTH = 120  # 束宽：数值越小越快，数值越大越能防死胡同。120 是个绝佳的平衡点
+        if len(next_layer) > BEAM_WIDTH:
+            # 只保留 total_cost 最低的 BEAM_WIDTH 个状态继续往后推演
+            sorted_states = sorted(next_layer.items(), key=lambda item: item[1][0])
+            next_layer = dict(sorted_states[:BEAM_WIDTH])
+            
         dp.append(next_layer)
         
     best_final_state = min(dp[-1].items(), key=lambda x: x[1][0])[0]

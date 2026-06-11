@@ -59,8 +59,13 @@
             <div class="segmented-control">
               <input type="radio" id="mode-free" value="FREE" v-model="store.mode" @change="resetState">
               <label for="mode-free">自由模式</label>
+              
               <input type="radio" id="mode-soprano" value="SOPRANO" v-model="store.mode" @change="resetState">
               <label for="mode-soprano">高音题模式</label>
+
+              <input type="radio" id="mode-bass" value="BASS" v-model="store.mode" @change="resetState">
+              <label for="mode-bass">低音题模式</label>
+              
               <input type="radio" id="mode-compose" value="COMPOSE" v-model="store.mode" @change="resetState">
               <label for="mode-compose">旋律写作模式</label>
             </div>
@@ -87,6 +92,9 @@
             <div class="btn-group">
               <button @click="playSequence" class="modern-btn btn-success">
                 <span class="icon">▶</span> 试听序列
+              </button>
+              <button @click="exportMusicXML" class="modern-btn btn-primary" :disabled="store.history.length === 0" style="background: #7C3AED;">
+                <span class="icon">🎼</span> 导出 MusicXML
               </button>
               <button @click="resetState" class="modern-btn btn-danger">
                 <span class="icon">🗑️</span> 清空画板
@@ -312,7 +320,9 @@ const showUpdateReportModal = ref(false);
 const showDonateModal = ref(false);
 const showHelpModal = ref(false);
 const currentHelpMode = ref("FREE");
-const seenModes = reactive({ FREE: false, SOPRANO: false, COMPOSE: false });
+
+// 🌟 新增 BASS 到已读向导列表
+const seenModes = reactive({ FREE: false, SOPRANO: false, BASS: false, COMPOSE: false });
 const generalFeedbackModalOpen = ref(false);
 const generalFeedbackText = ref("");
 const issueSourceInput = ref("");
@@ -329,9 +339,11 @@ const isUnsolvableDAGErr = computed(() => {
   return store.debug_message && store.debug_message.includes("=== 启动 DAG 连通性诊断探针 ===");
 });
 
+// 🌟 为 BASS 模式编写专属新手指引
 const modeHelpData = {
   FREE: { title: "🎵 自由模式", rules: ["1. 自由选择两翼面板的可行和弦。", "2. 系统将实时运算最优声部进行。", "3. 点击五线谱节点即可精准回退状态。"] },
   SOPRANO: { title: "⚡ 高音题模式", rules: ["1. 输入高音旋律序列并运行 DAG 寻优。", "2. 左右两侧面板将精细过滤符合法则的级进和弦。", "3. 顺次点击推进，直至乐谱拼装完成。"] },
+  BASS: { title: "🎼 低音题模式", rules: ["1. 输入低音旋律序列 (C2-E4) 并运行 DAG 寻优。", "2. 引擎会根据低音限制计算合法和弦，并内置美学评分机制。", "3. 它将努力为您创作出一条具备起伏且与低音反向对流的女高音旋律线！"] },
   COMPOSE: { title: "🎹 旋律写作模式", rules: ["1. 弹奏一个旋律音高。", "2. 左右两侧面板将计算并点亮功能。"] }
 };
 
@@ -428,7 +440,46 @@ async function playSequence() {
   const t2 = setTimeout(() => { store.playbackIndex = null; }, store.history.length * duration * 1000);
   playbackTimeouts.push(t2);
 }
-
+async function exportMusicXML() {
+  if (store.history.length === 0) return;
+  
+  try {
+    const res = await fetch("/api/export_musicxml", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: store.mode,
+        key_name: store.key_name,
+        target_melody: store.target_melody,
+        history: store.history,
+        pending_note: store.pending_note
+      })
+    });
+    
+    if (!res.ok) throw new Error("后端导出失败");
+    const data = await res.json();
+    
+    
+    const blob = new Blob([data.xml], { type: "application/vnd.recordare.musicxml+xml" });
+    const url = window.URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.href = url;
+    
+    
+    const cleanKeyName = store.key_name.replace(/\s+/g, '_');
+    downloadAnchor.download = `Sposobin_Harmony_${cleanKeyName}.xml`;
+    
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    
+    
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(downloadAnchor);
+  } catch (e) {
+    console.error(e);
+    alert("❌ 乐谱导出失败：请检查 Python 后端服务是否正常运行。");
+  }
+}
 function onPianoNoteInput(midi) {
   if (store.mode === 'COMPOSE') {
     store.pending_note = midi;
@@ -473,8 +524,9 @@ function openGeneralFeedbackModal() { generalFeedbackText.value = ""; generalFee
 function closeDebugModal() { store.debug_message = null; }
 function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
 
+// 🌟 兼容判断：让 BASS 模式和 SOPRANO 模式共享同样的文本提示规则
 function getPromptText() {
-  if (store.mode === 'SOPRANO') return store.target_melody.length > 0 ? '路径穷尽或前方发生法则锁死' : '等待输入旋律序列';
+  if (store.mode === 'SOPRANO' || store.mode === 'BASS') return store.target_melody.length > 0 ? '路径穷尽或前方发生法则锁死' : '等待输入旋律序列';
   if (store.mode === 'COMPOSE') return store.pending_note ? '计算可行声部连接中...' : '请在上方键盘选定下一步旋律音';
   return '引擎正在进行通路剪枝排查...';
 }

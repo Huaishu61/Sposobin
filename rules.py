@@ -63,10 +63,11 @@ def evaluate_voicing(old_voices, new_voices, last_chord_name, target_chord_name,
     bass_penalty = 0
     is_bass_dim5_down = (bass_diff == -6) # 特例：减五度下行跳进（通常允许）
     
-    # 低音禁止超过八度的跳进，禁止大七/小七度跳进，增四度/减五度（除特定下行外）也禁止
-    if bass_leap > 12 or bass_leap in [10, 11] or (bass_leap == 6 and not is_bass_dim5_down): 
+    # 低音禁止超过八度的跳进，禁止大七度跳进，增四度/减五度（除特定下行外）也禁止
+    if bass_leap > 12 or bass_leap == 11 or (bass_leap == 6 and not is_bass_dim5_down): 
         return 999999
     # 给允许的大跳赋予软性线性罚分
+    elif bass_leap == 10: bass_penalty += 100 # 允许小七度跳进以适配斯波索宾部分器乐化大跳题
     elif bass_leap == 6 and is_bass_dim5_down: bass_penalty += 80   
     elif bass_leap in [8, 9]: bass_penalty += 50   
     else: bass_penalty += bass_leap * 0.5 
@@ -140,9 +141,9 @@ def evaluate_voicing(old_voices, new_voices, last_chord_name, target_chord_name,
             elif v == 'S': pass # 女高音旋律线偶尔放开限制
             else: return 999999 # 内声部严格禁止增减音程横向大跳
                 
-        # 严禁大六度、七度、八度以上的非古典跳进 (女高音除外)
+        # 严禁大六度、七度、八度以上的非古典跳进 (女高音与男低音线条除外)
         if leap in [9, 10, 11] or leap > 12:
-            if v != 'S': return 999999
+            if v not in ['S', 'B']: return 999999
 
     # ==========================================
     # 8. 变和弦专属解决规则 (Altered Chords Resolution)
@@ -218,7 +219,8 @@ def evaluate_voicing(old_voices, new_voices, last_chord_name, target_chord_name,
             _, old_step, _, _ = old_spells[v]
             if old_step == (key_info["root_step"] + 6) % 7: 
                 _, new_step, _, _ = new_spells[v]
-                if last_chord_name == "D₆" and target_chord_name == "VI" and v == 'S' and new_step == (key_info["root_step"] + 5) % 7: continue
+                # 🌟 修复：放宽特例允许男低音的导音也向下级进到 6 级音（满足经典下行低音线条 1-7-6）
+                if last_chord_name == "D₆" and target_chord_name in ["VI", "VI_阻碍"] and new_step == (key_info["root_step"] + 5) % 7: continue
                 if new_step != key_info["root_step"]: return 999999
 
     # 终止四六和弦 (K64) 解决：核心声部必须规整地下行转移到属功能和弦
@@ -342,6 +344,17 @@ def evaluate_voicing(old_voices, new_voices, last_chord_name, target_chord_name,
     elif leap_S in [1, 2]: melody_penalty = 0.0  
     elif leap_S in [3, 4, 5]: melody_penalty = 1.0 if is_same_chord else leap_S * 1.5
     else: melody_penalty = leap_S * 2.0 
+
+    if key_info.get("app_mode") == "BASS":
+        # 1. 鼓励外声部反向对流
+        if (new_S - old_voices['S']) * (new_B - old_voices['B']) < 0:
+            melody_penalty -= 15
+        # 2. 严厉惩罚高音“死气沉沉”
+        if leap_S == 0 and not is_same_chord:
+            melody_penalty += 35
+        # 3. 避免连续同向大跳
+        if leap_S > 4:
+            melody_penalty += 10
 
     inner_penalty = 0
     for leap in [leap_A, leap_T]:

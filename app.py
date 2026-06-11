@@ -319,12 +319,22 @@ def get_render_data(history, key_info, target_melody, pending_note):
         ledgers = list(range(90, y+1, 10)) if y >= 90 else (list(range(30, y-1, -10)) if y <= 30 else [])
         render_nodes.append({"type": "pending", "chord_display": "?", "notes": [{"v": "S", "y": y, "x": 0, "acc": "", "acc_x": 0, "ledgers": ledgers, "is_bass": False}]})
         
-    elif target_melody and key_info.get("app_mode") == "SOPRANO" and len(history) < len(target_melody):
+    elif target_melody and key_info.get("app_mode") in ["SOPRANO", "BASS"] and len(history) < len(target_melody):
+        is_bass_mode = key_info.get("app_mode") == "BASS"
+        v_name = "B" if is_bass_mode else "S"
+        
         for i in range(len(history), len(target_melody)):
             letter, abs_step, abs_alt, octave = spell_midi(target_melody[i], key_info, "")
-            y = PITCH_Y.get(f"{letter}{octave}", 90)
-            ledgers = list(range(90, y+1, 10)) if y >= 90 else (list(range(30, y-1, -10)) if y <= 30 else [])
-            render_nodes.append({"type": "target", "chord_display": "", "notes": [{"v": "S", "y": y, "x": 0, "acc": "", "acc_x": 0, "ledgers": ledgers, "is_bass": False}]})
+            suffix = "_bass" if is_bass_mode else ""
+            y = PITCH_Y.get(f"{letter}{octave}{suffix}", 160 if is_bass_mode else 90)
+            
+            ledgers = []
+            if is_bass_mode:
+                ledgers = list(range(160, y-1, -10)) if y <= 160 else (list(range(220, y+1, 10)) if y >= 220 else [])
+            else:
+                ledgers = list(range(90, y+1, 10)) if y >= 90 else (list(range(30, y-1, -10)) if y <= 30 else [])
+                
+            render_nodes.append({"type": "target", "chord_display": "", "notes": [{"v": v_name, "y": y, "x": 0, "acc": "", "acc_x": 0, "ledgers": ledgers, "is_bass": is_bass_mode}]})
             
     return {"sigs": sigs, "nodes": render_nodes}
 
@@ -346,7 +356,7 @@ def sync_state(req: EngineRequest):
         ideal_S, ideal_A, ideal_T, ideal_B = 72 + v_shift, 65 + v_shift, 60 + v_shift, 48 + v_shift
         score_initial = lambda v: abs(v['S']-ideal_S)*1.5 + abs(v['A']-ideal_A) + abs(v['T']-ideal_T) + abs(v['B']-ideal_B)
 
-        if req.mode == "SOPRANO" and req.target_melody:
+        if req.mode in ["SOPRANO", "BASS"] and req.target_melody:
             dag_layers = get_cached_dag(req.key_name, req.target_melody, active_dna_db, key_info)
             if dag_layers:
                 step = len(req.history)
@@ -378,18 +388,17 @@ def sync_state(req: EngineRequest):
                     req.target_melody.append(tgt_s)
                     req.pending_note = None
             else:
-                # 🌟 修复：引入和 FREE 模式一样的 DP 全局回溯重排机制！
                 best_overall_path = None
                 best_cost = 999999
                 for tc in target_variants:
                     chord_sequence = [item["chord"] for item in req.history] + [tc]
-                    temp_melody = req.target_melody + [tgt_s]  # 旋律也要带上这一步的新音
+                    temp_melody = req.target_melody + [tgt_s]
                     
                     global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, temp_melody)
                     
                     if global_path: 
                         last_c = req.history[-1]["chord"]
-                        last_v_optimized = global_path[-2]  # 提取优化后的上一步排列
+                        last_v_optimized = global_path[-2]
                         curr_v = global_path[-1]
                         cost = evaluate_voicing(last_v_optimized, curr_v, last_c, tc, key_info)
                         if cost < best_cost:
@@ -421,7 +430,6 @@ def sync_state(req: EngineRequest):
                     global_path = calculate_best_voicing(chord_sequence, req.history[0]["voices"], active_dna_db, key_info, None)
                     if global_path: 
                         last_c = req.history[-1]["chord"]
-                        # ⚡ V1.2 算法核心对齐修复：必须提取 DP 寻优机制中调整后的历史排列，彻底熔断断层漏洞
                         last_v_optimized = global_path[-2] 
                         curr_v = global_path[-1]
                         cost = evaluate_voicing(last_v_optimized, curr_v, last_c, tc, key_info)
@@ -436,7 +444,7 @@ def sync_state(req: EngineRequest):
     next_chords = []
     is_completed = False
     
-    if req.mode == "SOPRANO" and req.target_melody:
+    if req.mode in ["SOPRANO", "BASS"] and req.target_melody:
         if len(req.history) == len(req.target_melody):
             is_completed = True
             
@@ -452,7 +460,9 @@ def sync_state(req: EngineRequest):
             start_index = 0
             if not req.history:
                 start_chord = "T" if key_info["type"] == "MAJOR" else "t"
-                cands = get_chord_candidates(start_chord, active_dna_db, req.target_melody[0])
+                tgt_s = req.target_melody[0] if req.mode == "SOPRANO" else None
+                tgt_b = req.target_melody[0] if req.mode == "BASS" else None
+                cands = get_chord_candidates(start_chord, active_dna_db, target_s=tgt_s, target_b=tgt_b)
                 for v in cands: current_layer[(start_chord, v_to_tuple(v))] = {start_chord}
                 logs.append(f"[节点 0] 目标 MIDI={req.target_melody[0]}, 初始 '{start_chord}' 合法状态数: {len(current_layer)}")
             else:
@@ -463,13 +473,15 @@ def sync_state(req: EngineRequest):
 
             for i in range(start_index + 1 if req.history else 1, len(req.target_melody)):
                 next_layer = {}
-                tgt_s = req.target_melody[i]
+                tgt_note = req.target_melody[i]
+                tgt_s = tgt_note if req.mode == "SOPRANO" else None
+                tgt_b = tgt_note if req.mode == "BASS" else None
                 all_possible_nexts = set()
                 for c_name, _ in current_layer.keys():
                     all_possible_nexts.update(active_dna_db.get(c_name, {}).get("next", []))
                 cand_cache = {}
                 for nxt_chord in all_possible_nexts:
-                    if nxt_chord in active_dna_db: cand_cache[nxt_chord] = get_chord_candidates(nxt_chord, active_dna_db, tgt_s)
+                    if nxt_chord in active_dna_db: cand_cache[nxt_chord] = get_chord_candidates(nxt_chord, active_dna_db, target_s=tgt_s, target_b=tgt_b)
                 for (c_name, v_tup), _ in current_layer.items():
                     possible_nexts = active_dna_db.get(c_name, {}).get("next", [])
                     for nxt_chord in possible_nexts:
@@ -477,11 +489,11 @@ def sync_state(req: EngineRequest):
                         for nxt_v in cand_cache.get(nxt_chord, []):
                             if evaluate_voicing(tuple_to_v(v_tup), nxt_v, c_name, nxt_chord, key_info) < 999999: 
                                 next_layer[(nxt_chord, v_to_tuple(nxt_v))] = True
-                logs.append(f"[节点 {i}] 目标 MIDI={tgt_s}, 存活的合法连接状态数: {len(next_layer)}")
+                logs.append(f"[节点 {i}] 目标 MIDI={tgt_note}, 存活的合法连接状态数: {len(next_layer)}")
                 if not next_layer:
                     logs.append("-" * 50)
                     logs.append(f"❌ 连通性异常：路径已断开")
-                    logs.append(f"中断点: 节点 {i} (目标 MIDI: {tgt_s})")
+                    logs.append(f"中断点: 节点 {i} (目标 MIDI: {tgt_note})")
                     logs.append(f"在上一个节点 (MIDI: {req.target_melody[i-1]}) 时，可用的合法配置包含：")
                     surviving_chords = {}
                     for c_name, _ in current_layer.keys(): surviving_chords[c_name] = surviving_chords.get(c_name, 0) + 1
@@ -499,7 +511,7 @@ def sync_state(req: EngineRequest):
     elif not req.history:
         if req.mode == "COMPOSE" and req.pending_note is not None:
             for c_name in active_dna_db.keys():
-                if get_chord_candidates(c_name, active_dna_db, req.pending_note): next_chords.append(c_name)
+                if get_chord_candidates(c_name, active_dna_db, target_s=req.pending_note): next_chords.append(c_name)
         elif req.mode == "FREE": 
             next_chords = list(active_dna_db.keys())
     else:
@@ -516,12 +528,9 @@ def sync_state(req: EngineRequest):
                 
                 for nxt_c in possible_nexts:
                     if nxt_c in active_dna_db:
-                        # 🌟 修复：使用 DP 进行探路预测！
-                        # 假设我们走这一步，构造一条临时路径和临时旋律
                         temp_seq = [item["chord"] for item in req.history] + [nxt_c]
                         temp_mel = req.target_melody + [req.pending_note]
                         
-                        # 让 DP 去算一下，如果我选这个和弦，前面能不能调整得通？
                         if calculate_best_voicing(temp_seq, req.history[0]["voices"], active_dna_db, key_info, temp_mel):
                             next_chords.append(nxt_c)
                                 
@@ -607,3 +616,131 @@ def sync_state(req: EngineRequest):
         "debug_message": debug_msg,
         "is_completed": is_completed 
     }
+
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
+
+
+@app.post("/api/export_musicxml")
+def export_musicxml(req: EngineRequest):
+    key_info = KEY_REGISTRY.get(req.key_name)
+    if not key_info or not req.history:
+        raise HTTPException(status_code=400, detail="⚠️ 历史记录为空，无法导出乐谱")
+
+    fifths = key_info["sigs"]
+    if key_info["sig_type"] == "flat":
+        fifths = -fifths
+    mode_str = "major" if key_info["type"] == "MAJOR" else "minor"
+
+    # 设定技术参数：每 4 个和弦自动切分为一个小节 (标准 4/4 拍，每个和弦为四分音符)
+    beats_per_measure = 4
+    history = req.history
+    num_chords = len(history)
+
+    # 构建 MusicXML 根节点
+    root = ET.Element("score-partwise", version="3.1")
+    part_list = ET.SubElement(root, "part-list")
+    score_part = ET.SubElement(part_list, "score-part", id="P1")
+    ET.SubElement(score_part, "part-name").text = "Sposobin Harmony"
+
+    part = ET.SubElement(root, "part", id="P1")
+
+    # 将编写好的和弦级进序列按小节尺寸分块
+    measures_data = [history[i:i + beats_per_measure] for i in range(0, num_chords, beats_per_measure)]
+
+    for m_idx, m_chords in enumerate(measures_data):
+        measure = ET.SubElement(part, "measure", number=str(m_idx + 1))
+
+        # 仅在第一小节写入全局乐谱属性（调号、拍号、谱号定义）
+        if m_idx == 0:
+            attributes = ET.SubElement(measure, "attributes")
+            ET.SubElement(attributes, "divisions").text = "1"  # 四分音符时值设为 1
+
+            key = ET.SubElement(attributes, "key")
+            ET.SubElement(key, "fifths").text = str(fifths)
+            ET.SubElement(key, "mode").text = mode_str
+
+            time = ET.SubElement(attributes, "time")
+            ET.SubElement(time, "beats").text = str(beats_per_measure)
+            ET.SubElement(time, "beat-type").text = "4"
+
+            ET.SubElement(attributes, "staves").text = "2"  # 开启双行大谱表
+
+            # 1 号谱表：高音谱号 (Treble Clef)
+            clef1 = ET.SubElement(attributes, "clef", number="1")
+            ET.SubElement(clef1, "sign").text = "G"
+            ET.SubElement(clef1, "line").text = "2"
+
+            # 2 号谱表：低音谱号 (Bass Clef)
+            clef2 = ET.SubElement(attributes, "clef", number="2")
+            ET.SubElement(clef2, "sign").text = "F"
+            ET.SubElement(clef2, "line").text = "4"
+
+        # 传统四声部在大谱表中的标准图层配置 (Voice / Staff / Stem 方向)
+        voices_config = [
+            {"name": "S", "voice": "1", "staff": "1", "stem": "up"},    # 女高音：上谱表，符干朝上
+            {"name": "A", "voice": "2", "staff": "1", "stem": "down"},  # 女低音：上谱表，符干朝下
+            {"name": "T", "voice": "3", "staff": "2", "stem": "up"},    # 男高音：下谱表，符干朝上
+            {"name": "B", "voice": "4", "staff": "2", "stem": "down"}   # 男低音：下谱表，符干朝下
+        ]
+
+        current_measure_duration = len(m_chords)
+
+        for v_idx, cfg in enumerate(voices_config):
+            v_name = cfg["name"]
+            for item in m_chords:
+                chord_name = item["chord"]
+                midi_note = item["voices"][v_name]
+                
+                # 🌟🌟🌟 在这里插入：只在高音声部 (v_idx == 0) 时，添加顶部和弦文本标记
+                if v_idx == 0:
+                    display_chord = format_chord_name(chord_name)  # 复用已有的格式化函数清洗底标
+                    
+                    direction = ET.SubElement(measure, "direction", placement="above")
+                    dir_type = ET.SubElement(direction, "direction-type")
+                    words = ET.SubElement(dir_type, "words", font_family="Lora", font_weight="normal", font_size="12")
+                    words.set("default-y", "25")  # 让 MuseScore 把它往上推一点，避开高音符干
+                    words.text = display_chord
+                    ET.SubElement(direction, "staff").text = "1"
+                # 🌟🌟🌟 插入结束
+
+                # 🚀 核心纽带：复用你现有的 spell_midi 算法，确保临时变音记号完美解析
+                letter, _, abs_alt, octave = spell_midi(midi_note, key_info, chord_name)
+
+                note = ET.SubElement(measure, "note")
+                pitch = ET.SubElement(note, "pitch")
+                ET.SubElement(pitch, "step").text = letter
+                if abs_alt != 0:
+                    ET.SubElement(pitch, "alter").text = str(abs_alt)
+                ET.SubElement(pitch, "octave").text = str(octave)
+
+                ET.SubElement(note, "duration").text = "1"
+                ET.SubElement(note, "voice").text = cfg["voice"]
+                ET.SubElement(note, "type").text = "quarter"
+                ET.SubElement(note, "stem").text = cfg["stem"]
+                ET.SubElement(note, "staff").text = cfg["staff"]
+
+            # 关键多声部对齐逻辑：写完一个声部后，如果后面还有声部，时值必须用 <backup> 倒回小节起点
+            if v_idx < 3 and current_measure_duration > 0:
+                backup = ET.SubElement(measure, "backup")
+                ET.SubElement(backup, "duration").text = str(current_measure_duration)
+
+    # 格式化导出带有标准 DTD 头的 XML 文本流
+    raw_xml = ET.tostring(root, encoding="utf-8")
+    parsed_xml = minidom.parseString(raw_xml)
+    pretty_xml = parsed_xml.toprettyxml(indent="  ")
+    
+    # 🌟 修复点：加上了极其关键的 DOCTYPE 声明！
+    musicxml_header = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+        '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n'
+    )
+    
+    # 更安全地移除 minidom 默认生成的简版 xml 头
+    xml_lines = pretty_xml.split("\n")
+    if xml_lines[0].startswith("<?xml"):
+        body_start = pretty_xml.index("\n") + 1
+        pretty_xml = pretty_xml[body_start:]
+    
+    final_xml_content = musicxml_header + pretty_xml
+    return {"xml": final_xml_content}
